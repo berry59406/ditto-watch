@@ -1,0 +1,19 @@
+{
+  "name": "軟綿綿百變軟泥 — Apple Watch 電子雞",
+  "short_name": "百變軟泥",
+  "description": "專為 Apple Watch 與 iPhone 設計的療癒百變軟泥電子雞 Web App",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#FFF9FC",
+  "theme_color": "#FFF9FC",
+  "icons": [
+    {
+      "src": "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 192 192'><rect width='192' height='192' rx='44' fill='%23FFF9FC'/><path d='M96 36 C135 36 160 66 164 114 C168 148 142 162 96 162 C50 162 24 148 28 114 C32 66 57 36 96 36 Z' fill='%23F9C6D9' stroke='%234A355B' stroke-width='7'/><circle cx='72' cy='90' r='5.5' fill='%234A355B'/><circle cx='120' cy='90' r='5.5' fill='%234A355B'/><path d='M66 106 Q96 124 126 106' fill='none' stroke='%234A355B' stroke-width='6' stroke-linecap='round'/><ellipse cx='56' cy='102' rx='10' ry='5' fill='%23F0789C' opacity='0.45'/><ellipse cx='136' cy='102' rx='10' ry='5' fill='%23F0789C' opacity='0.45'/></svg>",
+      "sizes": "192x192 512x512",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

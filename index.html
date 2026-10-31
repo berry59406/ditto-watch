@@ -1,0 +1,2708 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="百變軟泥">
+<meta name="theme-color" content="#FFF9FC">
+<link rel="manifest" href="./manifest.json">
+<title>軟綿綿百變軟泥 — Apple Watch PWA</title>
+<style>
+  :root {
+    --bg-cream: #FFF9FC;
+    --blob-purple: #8E6BA8;
+    --blob-dark: #4A355B;
+    --blob-pink: #F9C6D9;
+    --blob-lavender: #D5BBE8;
+    --blob-blue: #A9D9EC;
+  }
+
+  * {
+    box-sizing: border-box;
+    user-select: none;
+    -webkit-user-select: none;
+    -webkit-touch-callout: none;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  html, body {
+    margin: 0;
+    padding: 0;
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    overscroll-behavior: none;
+    background: #141118;
+    font-family: 'Nunito', 'Noto Sans TC', -apple-system, BlinkMacSystemFont, sans-serif;
+    color: var(--blob-dark);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+  }
+
+  /* ================= APPLE WATCH 核心視口容器 ================= */
+  .watch-app-viewport {
+    width: 100vw;
+    height: 100dvh;
+    background: var(--bg-cream);
+    position: relative;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+  }
+
+  @media (min-width: 420px) and (min-height: 460px) {
+    .watch-app-viewport {
+      width: 320px;
+      height: 390px;
+      border-radius: 54px;
+      border: 4px solid #3A3442;
+      box-shadow: 0 18px 48px rgba(0, 0, 0, 0.55);
+    }
+  }
+
+  /* 頂部狀態列 */
+  .watch-statusbar {
+    height: 32px;
+    padding: 4px 12px 0;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 11px;
+    font-weight: 900;
+    color: var(--blob-dark);
+    z-index: 10;
+    background: rgba(255, 249, 252, 0.94);
+    border-bottom: 1.5px solid rgba(74, 53, 91, 0.12);
+    flex-shrink: 0;
+  }
+
+  .diary-open-btn {
+    background: var(--blob-pink);
+    color: var(--blob-dark);
+    border: 2px solid var(--blob-dark);
+    border-radius: 99px;
+    padding: 2px 8px;
+    font-size: 10px;
+    font-weight: 900;
+    cursor: pointer;
+    box-shadow: 1px 1.5px 0 var(--blob-dark);
+    font-family: inherit;
+    display: flex;
+    align-items: center;
+    gap: 3px;
+  }
+
+  .diary-open-btn:active {
+    transform: translate(1px, 1px);
+    box-shadow: 0 0 0 var(--blob-dark);
+  }
+
+  .clock-wrap {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+  }
+
+  .pwa-dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: #4ADE80;
+    border: 1px solid var(--blob-dark);
+  }
+
+  .pwa-dot.offline {
+    background: #F59E0B;
+  }
+
+  /* 手錶主互動畫布區 */
+  .watch-stage {
+    flex: 1;
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    min-height: 0;
+  }
+
+  #petCanvas {
+    width: 100%;
+    height: 100%;
+    display: block;
+    cursor: grab;
+    touch-action: none;
+  }
+
+  #petCanvas:active {
+    cursor: grabbing;
+  }
+
+  /* 上層漂浮提示膠囊 */
+  .stage-hud-top {
+    position: absolute;
+    top: 6px;
+    left: 8px;
+    right: 8px;
+    display: flex;
+    justify-content: space-between;
+    pointer-events: none;
+    z-index: 4;
+    gap: 4px;
+  }
+
+  .mini-pill {
+    background: rgba(255, 255, 255, 0.92);
+    border: 1.8px solid var(--blob-dark);
+    border-radius: 99px;
+    padding: 2px 7px;
+    font-size: 9.5px;
+    font-weight: 900;
+    box-shadow: 1px 1.5px 0 rgba(74, 53, 91, 0.16);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  /* 軟泥窩底部：日常小活動快速切換列 */
+  .activity-picker-bar {
+    position: absolute;
+    bottom: 5px;
+    left: 4px;
+    right: 4px;
+    display: flex;
+    justify-content: center;
+    flex-wrap: wrap;
+    gap: 3px;
+    z-index: 5;
+  }
+
+  .activity-picker-bar.hidden {
+    display: none;
+  }
+
+  .act-pill {
+    background: rgba(255, 255, 255, 0.94);
+    border: 1.8px solid var(--blob-dark);
+    border-radius: 9px;
+    padding: 2px 5px;
+    font-size: 9.5px;
+    font-weight: 900;
+    cursor: pointer;
+    box-shadow: 1px 1.5px 0 var(--blob-dark);
+    color: var(--blob-dark);
+    font-family: inherit;
+    transition: all 0.12s;
+  }
+
+  .act-pill.active {
+    background: var(--blob-pink);
+    transform: translateY(-1.5px);
+  }
+
+  /* 餵食模式底部食物選擇器 */
+  .food-picker-bar {
+    position: absolute;
+    bottom: 5px;
+    left: 4px;
+    right: 4px;
+    display: flex;
+    justify-content: center;
+    flex-wrap: wrap;
+    gap: 3px;
+    z-index: 5;
+  }
+
+  .food-picker-bar.hidden {
+    display: none;
+  }
+
+  .food-slot {
+    background: #FFF;
+    border: 1.8px solid var(--blob-dark);
+    border-radius: 9px;
+    padding: 2px 5px;
+    font-size: 12px;
+    cursor: pointer;
+    box-shadow: 1px 1.5px 0 var(--blob-dark);
+    display: flex;
+    align-items: center;
+    gap: 2px;
+  }
+
+  .food-slot.selected {
+    background: var(--blob-pink);
+    transform: translateY(-1.5px);
+  }
+
+  .food-slot span {
+    font-size: 8.5px;
+    font-weight: 900;
+  }
+
+  /* 手錶底部 Dock 導覽列 (5 個核心功能) */
+  .watch-dock {
+    height: 48px;
+    background: #F8EEFC;
+    border-top: 2px solid var(--blob-dark);
+    display: flex;
+    justify-content: space-around;
+    align-items: center;
+    padding: 0 4px 2px;
+    z-index: 6;
+    flex-shrink: 0;
+  }
+
+  .dock-btn {
+    background: transparent;
+    border: none;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 1px;
+    padding: 3px 2px;
+    min-width: 0;
+    flex: 1;
+    border-radius: 10px;
+    cursor: pointer;
+    font-family: inherit;
+    transition: all 0.12s;
+    color: #877199;
+  }
+
+  .dock-btn .icon {
+    font-size: 15px;
+    line-height: 1;
+  }
+
+  .dock-btn .lbl {
+    font-size: 8.5px;
+    font-weight: 900;
+  }
+
+  .dock-btn.active {
+    background: var(--blob-pink);
+    color: var(--blob-dark);
+    border: 1.8px solid var(--blob-dark);
+    box-shadow: 1px 1.5px 0px var(--blob-dark);
+    transform: translateY(-1.5px);
+  }
+
+  /* ================= 內建抽屜面板：飼育日記 & 商店 ================= */
+  .drawer-overlay {
+    position: absolute;
+    inset: 0;
+    background: #FFFBFD;
+    z-index: 30;
+    display: flex;
+    flex-direction: column;
+    transition: transform 0.22s cubic-bezier(0.2, 0.8, 0.2, 1);
+  }
+
+  .drawer-overlay.hidden {
+    transform: translateY(102%);
+    pointer-events: none;
+  }
+
+  .drawer-header {
+    padding: 6px 12px;
+    background: #F6ECFA;
+    border-bottom: 2px solid var(--blob-dark);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-shrink: 0;
+  }
+
+  .drawer-header h2 {
+    margin: 0;
+    font-size: 12px;
+    font-weight: 900;
+  }
+
+  .drawer-body {
+    flex: 1;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    padding: 8px 10px 18px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .dino-card {
+    background: #FFF;
+    border: 2px solid var(--blob-dark);
+    border-radius: 14px;
+    padding: 8px 10px;
+    box-shadow: 2px 3px 0px var(--blob-dark);
+  }
+
+  .dino-card h3 {
+    margin: 0 0 5px;
+    font-size: 11px;
+    font-weight: 900;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .crayon-btn {
+    background: #FFF;
+    color: var(--blob-dark);
+    border: 1.8px solid var(--blob-dark);
+    box-shadow: 1px 2px 0px var(--blob-dark);
+    border-radius: 10px;
+    padding: 4px 8px;
+    font-weight: 800;
+    font-size: 10.5px;
+    cursor: pointer;
+    font-family: inherit;
+  }
+
+  .crayon-btn:active:not(:disabled) {
+    transform: translate(1px, 1px);
+    box-shadow: 0px 1px 0px var(--blob-dark);
+  }
+
+  .crayon-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    background: #F2ECF5;
+  }
+
+  .crayon-btn.warn { background: #FFE3EE; }
+  .crayon-btn.accent { background: #EADCF8; }
+  .crayon-btn.active-act { background: var(--blob-pink); }
+
+  .stat-bars {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 5px;
+  }
+
+  .stat-item {
+    background: #FDF9FC;
+    border: 1.5px solid var(--blob-dark);
+    border-radius: 9px;
+    padding: 4px 6px;
+  }
+
+  .stat-label {
+    font-size: 9.5px;
+    font-weight: 800;
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 2px;
+  }
+
+  .bar-bg {
+    height: 6px;
+    background: #EDE1F3;
+    border-radius: 99px;
+    overflow: hidden;
+    border: 1px solid var(--blob-dark);
+  }
+
+  .bar-fill {
+    height: 100%;
+    transition: width 0.3s;
+  }
+
+  .activity-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 5px;
+  }
+
+  .shop-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 6px;
+  }
+
+  .shop-item {
+    border: 1.8px solid var(--blob-dark);
+    border-radius: 11px;
+    padding: 6px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    background: #FFFBFD;
+    gap: 2px;
+  }
+
+  .shop-item .hat-title {
+    font-size: 10px;
+    font-weight: 900;
+  }
+
+  .shop-item .hat-sub {
+    font-size: 8.5px;
+    font-weight: 800;
+    color: #7B5E8E;
+  }
+
+  .SyncToast {
+    font-size: 9.5px;
+    font-weight: 800;
+    color: #553575;
+    background: #F3E5F8;
+    border: 1.5px solid #6E4794;
+    padding: 4px 6px;
+    border-radius: 8px;
+    text-align: center;
+  }
+
+  /* 創角精靈覆蓋層 */
+  .wizard-overlay {
+    position: absolute;
+    inset: 0;
+    background: #FFF9FC;
+    z-index: 40;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    padding: 14px 12px 12px;
+    text-align: center;
+  }
+
+  .wizard-overlay.hidden {
+    display: none;
+  }
+
+  .wiz-step-badge {
+    display: inline-block;
+    background: var(--blob-pink);
+    border: 1.8px solid var(--blob-dark);
+    padding: 2px 8px;
+    border-radius: 99px;
+    font-size: 9.5px;
+    font-weight: 900;
+    margin: 0 auto 2px;
+  }
+
+  .wiz-title {
+    font-size: 13px;
+    font-weight: 900;
+    margin: 0 0 4px;
+  }
+
+  .char-carousel {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .carousel-arrow {
+    width: 26px;
+    height: 26px;
+    border-radius: 50%;
+    border: 2px solid var(--blob-dark);
+    background: #FFF;
+    font-weight: 900;
+    cursor: pointer;
+    box-shadow: 1px 1.5px 0 var(--blob-dark);
+    color: var(--blob-dark);
+  }
+
+  #wizardPreviewCanvas {
+    width: 120px;
+    height: 110px;
+  }
+
+  .char-desc-box {
+    background: #F6ECFA;
+    border: 1.8px solid var(--blob-dark);
+    border-radius: 11px;
+    padding: 5px 8px;
+    margin-bottom: 5px;
+  }
+
+  .char-desc-box h4 {
+    margin: 0;
+    font-size: 12px;
+    font-weight: 900;
+  }
+
+  .char-desc-box p {
+    margin: 2px 0 0;
+    font-size: 9.5px;
+    color: #6B537C;
+    font-weight: 700;
+  }
+
+  .gender-grid {
+    display: flex;
+    gap: 6px;
+    justify-content: center;
+    margin: 12px 0;
+  }
+
+  .gender-card {
+    flex: 1;
+    padding: 8px 4px;
+    border: 2px solid var(--blob-dark);
+    border-radius: 12px;
+    background: #FFF;
+    cursor: pointer;
+    font-weight: 900;
+    font-size: 10.5px;
+  }
+
+  .gender-card.selected {
+    background: var(--blob-pink);
+    box-shadow: 1.5px 2px 0 var(--blob-dark);
+  }
+
+  .name-input {
+    width: 100%;
+    padding: 6px 8px;
+    border: 2px solid var(--blob-dark);
+    border-radius: 10px;
+    font-size: 12px;
+    font-weight: 900;
+    text-align: center;
+    font-family: inherit;
+    background: #FFF;
+    margin-bottom: 6px;
+    color: var(--blob-dark);
+  }
+
+  .preset-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    justify-content: center;
+    margin-bottom: 8px;
+  }
+
+  .chip {
+    font-size: 9.5px;
+    font-weight: 800;
+    background: #F3E5F8;
+    border: 1.5px solid var(--blob-dark);
+    border-radius: 99px;
+    padding: 2px 7px;
+    cursor: pointer;
+  }
+</style>
+</head>
+<body>
+
+<div class="watch-app-viewport">
+
+  <!-- 頂部狀態列：左上角可打開「飼育日記/商店/等級切換」抽屜 -->
+  <div class="watch-statusbar">
+    <button class="diary-open-btn" data-secure-click="open_diary">
+      📱 日記/商店 <span id="topCoinBadge">300G</span>
+    </button>
+    <span id="watchTitleText">百變小粉</span>
+    <div class="clock-wrap">
+      <span class="pwa-dot" id="pwaStatusDot" title="PWA 離線快取已就緒"></span>
+      <span id="watchClock">10:09</span>
+    </div>
+  </div>
+
+  <!-- 3 步驟創角精靈 -->
+  <div id="wizardOverlay" class="wizard-overlay hidden">
+    <div id="wizStep1">
+      <span class="wiz-step-badge">STEP 1 / 3 · 選擇軟泥</span>
+      <h3 class="wiz-title">選擇你的百變軟泥夥伴</h3>
+      <div class="char-carousel">
+        <button class="carousel-arrow" data-secure-click="a4">◀</button>
+        <canvas id="wizardPreviewCanvas" width="280" height="260"></canvas>
+        <button class="carousel-arrow" data-secure-click="a5">▶</button>
+      </div>
+      <div class="char-desc-box">
+        <h4 id="wizCharName">櫻花粉百變軟泥</h4>
+        <p id="wizCharBio">溫柔愛笑的粉紅軟泥，戳戳牠會露出害羞腮紅斜線與大笑嘴！</p>
+      </div>
+      <button class="crayon-btn accent" style="width:100%;padding:6px;" data-secure-click="a6">下一步：選擇屬性 ➔</button>
+    </div>
+
+    <div id="wizStep2" style="display:none;">
+      <span class="wiz-step-badge">STEP 2 / 3 · 選擇性別</span>
+      <h3 class="wiz-title">設定小軟泥的性別屬性</h3>
+      <div class="gender-grid">
+        <div class="gender-card selected" id="genBoy" data-secure-click="a7">👦<br>男生</div>
+        <div class="gender-card" id="genGirl" data-secure-click="a8">👧<br>女生</div>
+        <div class="gender-card" id="genFree" data-secure-click="a9">🫧<br>百變系</div>
+      </div>
+      <div style="display:flex;gap:6px;">
+        <button class="crayon-btn" style="flex:1;" data-secure-click="a10">⬅ 返回</button>
+        <button class="crayon-btn accent" style="flex:2;" data-secure-click="a11">下一步：命名 ➔</button>
+      </div>
+    </div>
+
+    <div id="wizStep3" style="display:none;">
+      <span class="wiz-step-badge">STEP 3 / 3 · 軟泥命名</span>
+      <h3 class="wiz-title">幫小軟泥取個可愛名字</h3>
+      <input type="text" id="petNameInput" class="name-input" value="百變小粉" maxlength="10" />
+      <div class="preset-chips">
+        <span class="chip" data-secure-click="a12">百變小粉</span>
+        <span class="chip" data-secure-click="a13">麻糬紫</span>
+        <span class="chip" data-secure-click="a14">蘇打藍</span>
+        <span class="chip" data-secure-click="a15">軟綿綿</span>
+      </div>
+      <div style="display:flex;gap:6px;">
+        <button class="crayon-btn" style="flex:1;" data-secure-click="a16">⬅ 返回</button>
+        <button class="crayon-btn accent" style="flex:2;" data-secure-click="a17">🫧 軟綿綿誕生！</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 手錶內建抽屜面板：飼育日記、等級切換、配件店、測試按鈕 -->
+  <div id="diaryDrawer" class="drawer-overlay hidden">
+    <div class="drawer-header">
+      <h2>📱 軟泥飼育日記 · 商店</h2>
+      <button class="crayon-btn accent" data-secure-click="close_diary">✖ 返回手錶</button>
+    </div>
+    <div class="drawer-body">
+      <div class="SyncToast" id="syncToast">
+        ✨ PWA 離線快取已啟用：無網路也能順暢打開軟泥！
+      </div>
+
+      <!-- 等級切換卡 -->
+      <div class="dino-card">
+        <h3>
+          <span>🌟 等級切換 (Lv.1~Lv.3)</span>
+          <span style="color:var(--blob-purple);" id="stageNameBadge">Lv.1 初階軟泥</span>
+        </h3>
+        <p id="stageFeatureDesc" style="margin:0 0 5px;font-size:9.5px;color:#6B537C;font-weight:800;">
+          🔓 目前開放：3 種食物｜3 種日常動作｜3 種配件選擇
+        </p>
+        <div style="display:flex;gap:4px;">
+          <button class="crayon-btn" style="flex:1;" id="btnLv1" data-secure-click="lv1">⭐Lv.1 (3種)</button>
+          <button class="crayon-btn" style="flex:1;" id="btnLv2" data-secure-click="lv2">⭐⭐Lv.2 (4種)</button>
+          <button class="crayon-btn" style="flex:1;" id="btnLv3" data-secure-click="lv3">⭐⭐⭐Lv.3 (5種)</button>
+        </div>
+      </div>
+
+      <!-- 日常動作選擇卡 -->
+      <div class="dino-card">
+        <h3>
+          <span>🎬 日常動作選擇</span>
+          <span style="color:var(--blob-purple);" id="currentActivityBadge">📖 專心看書中</span>
+        </h3>
+        <div class="activity-grid" id="phoneActivityGrid"></div>
+        <div style="display:flex;gap:4px;margin-top:5px;">
+          <button class="crayon-btn" style="flex:1;" id="phoneAct-none" data-secure-click="act_none">🫧 純發呆</button>
+          <button class="crayon-btn accent" style="flex:1;" data-secure-click="a38">🎲 隨機日常</button>
+        </div>
+      </div>
+
+      <!-- 百變配件店 -->
+      <div class="dino-card">
+        <h3>
+          <span>🎀 百變配件店</span>
+          <span style="color:#877199;" id="shopUnlockLabel">已開放 3 / 5 種</span>
+        </h3>
+        <div class="shop-grid" id="shopGrid"></div>
+      </div>
+
+      <!-- 狀態數值與計步同步 -->
+      <div class="dino-card">
+        <h3>
+          <span id="phonePetIdentity">🫧 百變小粉 (♂️ 男生)</span>
+          <span style="color:var(--blob-purple);" id="phoneLevelBadge">🪙 300 G</span>
+        </h3>
+        <div class="stat-bars">
+          <div class="stat-item">
+            <div class="stat-label"><span>🍡 飽食</span><span id="lblHunger">85%</span></div>
+            <div class="bar-bg"><div class="bar-fill" id="barHunger" style="width:85%;background:#F48FB1;"></div></div>
+          </div>
+          <div class="stat-item">
+            <div class="stat-label"><span>❤️ 快樂</span><span id="lblHappy">90%</span></div>
+            <div class="bar-bg"><div class="bar-fill" id="barHappy" style="width:90%;background:#CE93D8;"></div></div>
+          </div>
+          <div class="stat-item">
+            <div class="stat-label"><span>🫧 清潔</span><span id="lblClean">100%</span></div>
+            <div class="bar-bg"><div class="bar-fill" id="barClean" style="width:100%;background:#81D4FA;"></div></div>
+          </div>
+          <div class="stat-item">
+            <div class="stat-label"><span>💚 健康</span><span id="lblHealth">100%</span></div>
+            <div class="bar-bg"><div class="bar-fill" id="barHealth" style="width:100%;background:#A5D6A7;"></div></div>
+          </div>
+        </div>
+        <div style="display:flex;gap:4px;margin-top:6px;">
+          <button class="crayon-btn" style="flex:1;" data-secure-click="a27">🏃+500步 (+25G)</button>
+          <button class="crayon-btn accent" style="flex:1;" data-secure-click="a28">🏃+2000步 (+100G)</button>
+        </div>
+      </div>
+
+      <!-- 測試工具與換色 -->
+      <div class="dino-card">
+        <h3><span>🎨 軟泥色系 & 互動測試</span></h3>
+        <div style="display:flex;gap:4px;margin-bottom:5px;">
+          <button class="crayon-btn" style="flex:1;background:#FDE4EE;" data-secure-click="a29">🌸小粉</button>
+          <button class="crayon-btn" style="flex:1;background:#EFE3FA;" data-secure-click="a30">🍇麻糬紫</button>
+          <button class="crayon-btn" style="flex:1;background:#E1F4FC;" data-secure-click="a31">💎蘇打藍</button>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:4px;">
+          <button class="crayon-btn" data-secure-click="a0">😜 變換鬼臉</button>
+          <button class="crayon-btn" data-secure-click="a1">💩 測試搓澡</button>
+          <button class="crayon-btn warn" data-secure-click="a2">🤒 測試打針</button>
+          <button class="crayon-btn" data-secure-click="a3">🔄 重新創角</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 手錶主畫布舞台 -->
+  <div class="watch-stage">
+    <div class="stage-hud-top">
+      <div class="mini-pill" id="hudLevelPill">Lv.1/3 · 飽食 85%</div>
+      <div class="mini-pill" id="hudModeHint">👋 戳戳軟泥互動</div>
+    </div>
+
+    <canvas id="petCanvas" width="560" height="520"></canvas>
+
+    <!-- 軟泥窩專屬：底部日常小活動快速切換列 -->
+    <div id="activityPickerBar" class="activity-picker-bar"></div>
+
+    <!-- 餵食模式專屬：底部可選食物列 -->
+    <div id="foodPickerBar" class="food-picker-bar hidden"></div>
+  </div>
+
+  <!-- 底部切換列 (5 個核心功能) -->
+  <div class="watch-dock">
+    <button class="dock-btn active" data-secure-click="a21" id="tab-home">
+      <span class="icon">🫧</span><span class="lbl">軟泥窩</span>
+    </button>
+    <button class="dock-btn" data-secure-click="a22" id="tab-feed">
+      <span class="icon">🍡</span><span class="lbl">餵食</span>
+    </button>
+    <button class="dock-btn" data-secure-click="a23" id="tab-bath">
+      <span class="icon">🧽</span><span class="lbl">抹泡泡澡</span>
+    </button>
+    <button class="dock-btn" data-secure-click="a24" id="tab-heal">
+      <span class="icon">💉</span><span class="lbl">保健室</span>
+    </button>
+    <button class="dock-btn" data-secure-click="a25" id="tab-game">
+      <span class="icon">🎵</span><span class="lbl">猜拳課</span>
+    </button>
+  </div>
+
+</div>
+
+<script>
+// ============================================================================
+// 0. PWA 離線引擎註冊 & 動態生成 Apple 桌面圖示
+// ============================================================================
+(function initPWA() {
+  // 1. 註冊 Service Worker
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+      navigator.serviceWorker.register('./sw.js').catch(() => {});
+    });
+  }
+
+  // 2. 監聽連線/離線狀態，更新右上角狀態燈號
+  const dot = document.getElementById('pwaStatusDot');
+  function syncOnlineStatus() {
+    if (!dot) return;
+    const isOnline = navigator.onLine;
+    dot.classList.toggle('offline', !isOnline);
+    dot.title = isOnline ? '已連線 (PWA 離線快取已就緒)' : '目前為離線模式 (由本地快取執行中)';
+  }
+  window.addEventListener('online', syncOnlineStatus);
+  window.addEventListener('offline', syncOnlineStatus);
+  syncOnlineStatus();
+
+  // 3. 自動以 Canvas 繪製 180x180 的百變軟泥圖示給 iOS apple-touch-icon
+  try {
+    const iconCanvas = document.createElement('canvas');
+    iconCanvas.width = 180;
+    iconCanvas.height = 180;
+    const ic = iconCanvas.getContext('2d');
+    ic.fillStyle = '#FFF9FC';
+    ic.fillRect(0, 0, 180, 180);
+    ic.fillStyle = '#F9C6D9';
+    ic.strokeStyle = '#4A355B';
+    ic.lineWidth = 6;
+    ic.beginPath();
+    ic.arc(90, 96, 56, 0, Math.PI * 2);
+    ic.fill();
+    ic.stroke();
+    ic.fillStyle = '#4A355B';
+    ic.beginPath();
+    ic.arc(70, 86, 5, 0, Math.PI * 2);
+    ic.arc(110, 86, 5, 0, Math.PI * 2);
+    ic.fill();
+    ic.beginPath();
+    ic.moveTo(64, 102);
+    ic.quadraticCurveTo(90, 118, 116, 102);
+    ic.stroke();
+    const link = document.createElement('link');
+    link.rel = 'apple-touch-icon';
+    link.href = iconCanvas.toDataURL('image/png');
+    document.head.appendChild(link);
+  } catch (e) {}
+})();
+
+// ============================================================================
+// 1. 角色資料庫與等級設定
+// ============================================================================
+const CHARACTERS = [
+  {
+    id: 'pink_blob',
+    name: '櫻花粉百變軟泥',
+    shortName: '百變小粉',
+    bio: '溫柔愛笑的粉紅軟泥，戳戳牠會露出害羞腮紅斜線與大笑嘴！',
+    bodyColor: '#F9C6D9',
+    shadeColor: '#F2B1CA',
+    strokeColor: '#E59BB8',
+    featureColor: '#915F78',
+    mouthInnerColor: '#9E6B87',
+    tongueColor: '#FADAE8',
+    blushColor: '#F0789C',
+    lobeSeeds: [0.0, 1.2, 2.5, 3.8, 5.1]
+  },
+  {
+    id: 'purple_blob',
+    name: '薰衣草紫百變軟泥',
+    shortName: '麻糬紫',
+    bio: '經典百變怪薰衣草紫配色，身體像融化麻糬一樣軟Q有彈性！',
+    bodyColor: '#C5A8E0',
+    shadeColor: '#B392D3',
+    strokeColor: '#9E7BBF',
+    featureColor: '#674D82',
+    mouthInnerColor: '#6F538C',
+    tongueColor: '#DFC7F2',
+    blushColor: '#D975A8',
+    lobeSeeds: [0.6, 1.9, 3.1, 4.4, 5.7]
+  },
+  {
+    id: 'blue_blob',
+    name: '蘇打藍閃光軟泥',
+    shortName: '蘇打藍',
+    bio: '超稀有的色違蘇打水藍軟泥，總是大口微笑、充滿好奇心！',
+    bodyColor: '#A9D9EC',
+    shadeColor: '#91C9E0',
+    strokeColor: '#7CB8D1',
+    featureColor: '#486F84',
+    mouthInnerColor: '#527B91',
+    tongueColor: '#CFEBF7',
+    blushColor: '#F28CA8',
+    lobeSeeds: [1.1, 2.3, 3.5, 4.8, 6.0]
+  }
+];
+
+const ALL_FOODS = [
+  { id: 'dango', name: '三色糰子', icon: '🍡', hunger: 25, happy: 15, unlockLv: 1 },
+  { id: 'candy', name: '星星糖', icon: '🍬', hunger: 20, happy: 22, unlockLv: 1 },
+  { id: 'jelly', name: '草莓凍', icon: '🍓', hunger: 30, happy: 18, unlockLv: 1 },
+  { id: 'pudding', name: '焦糖布丁', icon: '🍮', hunger: 34, happy: 26, unlockLv: 2 },
+  { id: 'cake', name: '草莓蛋糕', icon: '🍰', hunger: 40, happy: 35, unlockLv: 3 }
+];
+
+const ALL_ACTIVITIES_ORDER = ['sleeping', 'reading', 'tea', 'exercising', 'painting'];
+
+const DAILY_ACTIVITIES = {
+  none: {
+    id: 'none',
+    unlockLv: 1,
+    shortBtn: '🫧發呆',
+    phoneBtn: '🫧 純發呆玩耍',
+    label: '🫧 自由玩耍中',
+    hint: '👋 點擊軟泥變換鬼臉',
+    bubble: '軟綿綿～戳戳我玩嘛！',
+    toast: '🫧 小軟泥現在正在軟泥窩裡自由玩耍！'
+  },
+  sleeping: {
+    id: 'sleeping',
+    unlockLv: 1,
+    shortBtn: '😴睡覺',
+    phoneBtn: '😴 呼呼睡覺',
+    label: '😴 呼呼大睡中',
+    hint: '😴 軟泥正在香甜午睡',
+    bubble: 'Zzz... 夢到吃大草莓凍... 🍓',
+    toast: '😴 打開 App 發現：小軟泥戴著睡帽正在呼呼大睡呢！'
+  },
+  reading: {
+    id: 'reading',
+    unlockLv: 1,
+    shortBtn: '📖看書',
+    phoneBtn: '📖 專心看書',
+    label: '📖 專心看書中',
+    hint: '📖 軟泥正在看書',
+    bubble: '《百變怪軟泥百科》好有趣喔！💡',
+    toast: '📖 打開 App 發現：小軟泥正戴著眼鏡專心看書呢！(+5 快樂)'
+  },
+  tea: {
+    id: 'tea',
+    unlockLv: 1,
+    shortBtn: '🍵喝茶',
+    phoneBtn: '🍵 悠哉喝茶',
+    label: '🍵 悠哉喝茶中',
+    hint: '🍵 軟泥正在品嚐熱茶',
+    bubble: '呼～熱呼呼的抹茶配點心最棒了🍵',
+    toast: '🍵 打開 App 發現：小軟泥正捧著熱抹茶悠哉喝下午茶！(+5 飽食)'
+  },
+  exercising: {
+    id: 'exercising',
+    unlockLv: 2,
+    shortBtn: '🏋️運動',
+    phoneBtn: '🏋️ 活力運動',
+    label: '🏋️ 活力運動中',
+    hint: '🏋️ 軟泥正在舉啞鈴',
+    bubble: '嘿咻！一二、一二！練成Q彈好身材💦',
+    toast: '🏋️ 打開 App 發現：小軟泥正綁著頭帶賣力舉啞鈴運動！(+5 健康)'
+  },
+  painting: {
+    id: 'painting',
+    unlockLv: 3,
+    shortBtn: '🎨畫畫',
+    phoneBtn: '🎨 創意畫畫',
+    label: '🎨 靈感畫畫中',
+    hint: '🎨 軟泥正在拿畫筆作畫',
+    bubble: '唰唰～把主人畫得超可愛！🎨✨',
+    toast: '🎨 打開 App 發現：小軟泥正拿著調色盤與畫筆開心作畫！(+6 快樂)'
+  }
+};
+
+const SHOP_HATS = [
+  { id: 'none', name: '無配件 (純粹軟泥)', sub: '原始造型', price: 0, owned: true, icon: '🫧', unlockLv: 1 },
+  { id: 'schoolhat', name: '小黃學生帽', sub: 'Lv.1 頭飾', price: 50, owned: true, icon: '🧢', unlockLv: 1 },
+  { id: 'daisy', name: '頭頂小雛菊', sub: 'Lv.1 頭飾', price: 80, owned: false, icon: '🌼', unlockLv: 1 },
+  { id: 'hatty', name: 'Y2K 動感耳機', sub: 'Lv.1 頭飾', price: 120, owned: false, icon: '🎧', unlockLv: 1 },
+  { id: 'angel_set', name: '雲朵翅膀＋領巾', sub: 'Lv.2 解鎖配件', price: 150, owned: false, icon: '🪽', unlockLv: 2 },
+  { id: 'royal_set', name: '皇家披風＋皇冠', sub: 'Lv.3 解鎖配件', price: 200, owned: false, icon: '👑', unlockLv: 3 }
+];
+
+const LEVEL_CONFIG = {
+  1: { stageTitle: 'Lv.1 初階軟泥', shortTitle: 'Lv.1/3', scale: 1.08, count: 3, desc: '🔓 Lv.1 開放：3 種食物｜3 種日常動作｜3 種配件選擇' },
+  2: { stageTitle: 'Lv.2 進階軟泥', shortTitle: 'Lv.2/3', scale: 1.15, count: 4, desc: '🔓 Lv.2 開放：4 種食物｜4 種日常動作｜4 種配件 (含雲朵翅膀＋蝴蝶結領巾)' },
+  3: { stageTitle: 'Lv.3 完全體軟泥', shortTitle: 'Lv.3/3', scale: 1.22, count: 5, desc: '🔓 Lv.3 全開：5 種食物｜5 種日常動作｜5 種配件 (含皇家披風＋黃金寶石皇冠)' }
+};
+
+const IDLE_FACES = ['line_smile', 'big_laugh', 'tongue_out', 'blush_smile', 'surprised_o', 'sleepy_smile'];
+
+const state = {
+  charIndex: 0,
+  gender: '♂️ 男生',
+  petName: '百變小粉',
+  level: 1,
+  exp: 20,
+  growthMinutes: 0,
+  careMinutes: 0,
+  lastGrowthTick: Date.now(),
+  hunger: 85,
+  happy: 90,
+  clean: 100,
+  health: 100,
+  isSick: false,
+  coins: 300,
+  steps: 3420,
+  equippedHat: 'none',
+  mode: 'home',
+  activity: 'reading',
+  selectedFood: 0,
+  faceVariantIdx: 0,
+  squishVelocity: 0,
+  squishAmount: 0,
+  animTime: 0,
+  chewTimer: 0,
+  happyJumpTimer: 0,
+  rinseTimer: 0,
+  pointer: { down: false, x: 280, y: 420, startX: 280, startY: 420, lastX: 280, lastY: 420 },
+  thrownFood: null,
+  bubbles: [],
+  particles: [],
+  rpsState: { playerChoice: null, petChoice: null, resultText: '點選下方出拳，跟百變軟泥玩猜拳！' }
+};
+
+function getUnlockedFoods() {
+  return ALL_FOODS.slice(0, LEVEL_CONFIG[state.level].count);
+}
+function getUnlockedActivities() {
+  return ALL_ACTIVITIES_ORDER.slice(0, LEVEL_CONFIG[state.level].count);
+}
+
+const SAVE_KEY = 'squishy-ditto-watch-webapp-v1';
+function saveGame() {
+  try {
+    const data = {
+      charIndex: state.charIndex, gender: state.gender, petName: state.petName,
+      level: state.level, exp: state.exp, growthMinutes: state.growthMinutes, careMinutes: state.careMinutes, hunger: state.hunger, happy: state.happy,
+      clean: state.clean, health: state.health, isSick: state.isSick,
+      coins: state.coins, steps: state.steps, equippedHat: state.equippedHat,
+      ownedHats: SHOP_HATS.filter(h => h.owned).map(h => h.id), lastGrowthTick: Date.now()
+    };
+    localStorage.setItem(SAVE_KEY, JSON.stringify(data));
+  } catch (err) {}
+}
+
+function loadGame() {
+  try {
+    const raw = localStorage.getItem(SAVE_KEY);
+    if (!raw) return;
+    const data = JSON.parse(raw);
+    const bounded = (v, fallback) => Number.isFinite(Number(v)) ? Number(v) : fallback;
+    state.charIndex = Math.max(0, Math.min(CHARACTERS.length - 1, Math.floor(bounded(data.charIndex, 0))));
+    const allowedGenders = ['♂️ 男生', '♀️ 女生', '✨ 百變無性別'];
+    state.gender = allowedGenders.includes(data.gender) ? data.gender : state.gender;
+    state.petName = typeof data.petName === 'string' ? data.petName.replace(/[\u0000-\u001F\u007F]/g, '').trim().slice(0, 10) : state.petName;
+    state.level = Math.max(1, Math.min(3, Math.floor(bounded(data.level, 1))));
+    state.exp = Math.max(0, Math.min(99, Math.floor(bounded(data.exp, 20))));
+    if (state.level >= 3) state.exp = 0;
+    state.growthMinutes = Math.max(0, Math.min(9, bounded(data.growthMinutes, 0)));
+    state.careMinutes = Math.max(0, Math.min(5, bounded(data.careMinutes, 0)));
+    state.lastGrowthTick = Date.now();
+    for (const key of ['hunger', 'happy', 'clean', 'health']) {
+      state[key] = Math.max(0, Math.min(100, bounded(data[key], state[key])));
+    }
+    state.isSick = data.isSick === true;
+    state.coins = Math.max(0, Math.min(1000000, Math.floor(bounded(data.coins, 300))));
+    state.steps = Math.max(0, Math.min(100000000, Math.floor(bounded(data.steps, 3420))));
+    if (Array.isArray(data.ownedHats)) {
+      SHOP_HATS.forEach(h => h.owned = h.id === 'none' || h.id === 'schoolhat' || data.ownedHats.includes(h.id));
+    }
+    state.equippedHat = SHOP_HATS.some(h => h.id === data.equippedHat && h.owned && h.unlockLv <= state.level)
+      ? data.equippedHat : 'none';
+  } catch (err) {}
+}
+loadGame();
+
+function updateWatchClock() {
+  const now = new Date();
+  const hh = String(now.getHours()).padStart(2, '0');
+  const mm = String(now.getMinutes()).padStart(2, '0');
+  const el = document.getElementById('watchClock');
+  if (el) el.textContent = `${hh}:${mm}`;
+}
+setInterval(updateWatchClock, 10000);
+updateWatchClock();
+
+// ============================================================================
+// 2. 渲染引擎 (100% 保留原始百變怪流體輪廓與五官)
+// ============================================================================
+function traceDittoBlobPath(ctx, rx, ry, time, charObj, extraWobble = 1) {
+  const numPoints = 20;
+  const pts = [];
+  const lobeProfile = [
+    1.04, 1.15, 1.02, 0.90, 1.05,
+    1.16, 0.92, 1.16,
+    1.05, 0.90, 1.02, 1.15, 1.04,
+    0.95, 1.08, 0.94, 1.08, 0.95, 1.06, 0.96
+  ];
+
+  for (let i = 0; i < numPoints; i++) {
+    const angle = (i / numPoints) * Math.PI * 2;
+    const baseFactor = lobeProfile[i % lobeProfile.length];
+    const wave1 = Math.sin(angle * 3 + time * 2.6 + charObj.lobeSeeds[0]) * 0.045 * extraWobble;
+    const wave2 = Math.cos(angle * 5 - time * 3.4 + charObj.lobeSeeds[1]) * 0.032 * extraWobble;
+    const rFactor = baseFactor + wave1 + wave2;
+    const bottomSpread = Math.sin(angle) > 0 ? 1 + Math.sin(angle) * 0.14 : 1;
+    const px = Math.cos(angle) * rx * rFactor * bottomSpread;
+    const py = Math.sin(angle) * ry * rFactor;
+    pts.push({ x: px, y: py });
+  }
+
+  ctx.beginPath();
+  const firstMidX = (pts[numPoints - 1].x + pts[0].x) / 2;
+  const firstMidY = (pts[numPoints - 1].y + pts[0].y) / 2;
+  ctx.moveTo(firstMidX, firstMidY);
+
+  for (let i = 0; i < numPoints; i++) {
+    const next = pts[(i + 1) % numPoints];
+    const midX = (pts[i].x + next.x) / 2;
+    const midY = (pts[i].y + next.y) / 2;
+    ctx.quadraticCurveTo(pts[i].x, pts[i].y, midX, midY);
+  }
+  ctx.closePath();
+}
+
+function drawDittoCharacter(ctx, cx, cy, scale, charObj, modeState, time, hatId, isBathing = false) {
+  ctx.save();
+  ctx.translate(cx, cy);
+  ctx.scale(scale, scale);
+
+  const breath = Math.sin(time * 3.2);
+  const chewSquish = modeState === 'chewing' ? Math.sin(time * 22) * 0.09 : 0;
+  const bathSway = isBathing ? Math.sin(time * 10) * 0.07 : 0;
+  const scaleX = 1 + breath * 0.035 + chewSquish + state.squishAmount;
+  const scaleY = 1 - breath * 0.035 - chewSquish - state.squishAmount * 0.8;
+
+  ctx.rotate(bathSway);
+  ctx.scale(scaleX, scaleY);
+  const fColor = charObj.featureColor;
+
+  if (hatId === 'angel_set') {
+    const flap = Math.sin(time * 6.5) * 0.18;
+    const drawCloudWing = (dir) => {
+      ctx.save();
+      ctx.translate(dir * 96, -8 + breath * 2);
+      ctx.scale(dir, 1);
+      ctx.rotate(flap);
+      ctx.fillStyle = '#FFFDF9';
+      ctx.strokeStyle = fColor;
+      ctx.lineWidth = 3.5;
+      ctx.beginPath();
+      ctx.moveTo(-10, 8);
+      ctx.arc(8, -12, 16, Math.PI * 0.8, Math.PI * 1.9);
+      ctx.arc(24, -2, 14, Math.PI * 1.2, Math.PI * 0.3);
+      ctx.arc(14, 12, 13, 0, Math.PI * 0.9);
+      ctx.closePath();
+      ctx.fill();
+      ctx.stroke();
+      ctx.restore();
+    };
+    drawCloudWing(-1);
+    drawCloudWing(1);
+  } else if (hatId === 'royal_set') {
+    const wave = Math.sin(time * 4) * 6;
+    ctx.save();
+    ctx.fillStyle = '#FF758F';
+    ctx.strokeStyle = fColor;
+    ctx.lineWidth = 3.8;
+    ctx.beginPath();
+    ctx.moveTo(-78, -20);
+    ctx.quadraticCurveTo(-128 - wave, 35, -110 - wave, 78);
+    ctx.quadraticCurveTo(0, 92, 110 + wave, 78);
+    ctx.quadraticCurveTo(128 + wave, 35, 78, -20);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+    ctx.fillStyle = '#FFFDF9';
+    for (let x = -96; x <= 96; x += 32) {
+      ctx.beginPath();
+      ctx.arc(x, 76 + (1 - Math.abs(x) / 120) * 6, 13, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.stroke();
+    }
+    ctx.restore();
+  }
+
+  const rx = 104;
+  const ry = 88;
+  ctx.save();
+  traceDittoBlobPath(ctx, rx, ry, time, charObj, modeState === 'chewing' || isBathing ? 1.8 : 1.0);
+  ctx.fillStyle = charObj.bodyColor;
+  ctx.fill();
+
+  ctx.save();
+  ctx.clip();
+  traceDittoBlobPath(ctx, rx, ry - 10, time, charObj, 1.0);
+  ctx.lineWidth = 18;
+  ctx.strokeStyle = charObj.shadeColor;
+  ctx.globalAlpha = 0.35;
+  ctx.stroke();
+  ctx.restore();
+
+  ctx.lineWidth = 3.5;
+  ctx.strokeStyle = charObj.strokeColor;
+  ctx.stroke();
+  ctx.restore();
+
+  let faceType = IDLE_FACES[state.faceVariantIdx % IDLE_FACES.length];
+  if (modeState === 'sick') faceType = 'sick';
+  else if (modeState === 'expecting') faceType = 'expecting_open';
+  else if (modeState === 'chewing') faceType = 'chewing_happy';
+  else if (modeState === 'bathing' || modeState === 'sleep') faceType = 'sleepy_smile';
+  else if (modeState === 'happy') faceType = 'big_laugh';
+
+  const eyeY = -22 + breath * 2;
+  const eyeSpan = 32;
+
+  ctx.save();
+  ctx.strokeStyle = fColor;
+  ctx.fillStyle = fColor;
+  ctx.lineCap = 'round';
+  ctx.lineJoin = 'round';
+
+  if (faceType === 'sleepy_smile' || modeState === 'chewing') {
+    ctx.lineWidth = 4.2;
+    ctx.beginPath();
+    ctx.arc(-eyeSpan, eyeY - 2, 8, Math.PI * 0.15, Math.PI * 0.85);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.arc(eyeSpan, eyeY - 2, 8, Math.PI * 0.15, Math.PI * 0.85);
+    ctx.stroke();
+  } else if (faceType === 'sick') {
+    ctx.beginPath();
+    ctx.arc(-eyeSpan, eyeY + 2, 4, 0, Math.PI * 2);
+    ctx.arc(eyeSpan, eyeY + 2, 4, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.lineWidth = 3.5;
+    ctx.beginPath();
+    ctx.moveTo(-eyeSpan - 8, eyeY - 4); ctx.lineTo(-eyeSpan + 6, eyeY - 9);
+    ctx.moveTo(eyeSpan + 8, eyeY - 4);  ctx.lineTo(eyeSpan - 6, eyeY - 9);
+    ctx.stroke();
+
+    ctx.fillStyle = '#D4F1F9';
+    ctx.strokeStyle = '#7CB8D1';
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.roundRect(-26, -64 + breath * 2, 52, 16, 6);
+    ctx.fill();
+    ctx.stroke();
+  } else {
+    ctx.beginPath();
+    ctx.arc(-eyeSpan, eyeY, 4.3, 0, Math.PI * 2);
+    ctx.arc(eyeSpan, eyeY, 4.3, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  if (faceType === 'blush_smile' || faceType === 'big_laugh' || modeState === 'bathing' || modeState === 'chewing') {
+    ctx.save();
+    ctx.fillStyle = charObj.blushColor;
+    ctx.globalAlpha = 0.28;
+    ctx.beginPath();
+    ctx.ellipse(-eyeSpan - 12, eyeY + 12, 16, 8, 0, 0, Math.PI * 2);
+    ctx.ellipse(eyeSpan + 12, eyeY + 12, 16, 8, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.globalAlpha = 0.65;
+    ctx.strokeStyle = charObj.blushColor;
+    ctx.lineWidth = 2.2;
+    for (let s = -1.5; s <= 1.5; s += 1) {
+      ctx.beginPath();
+      ctx.moveTo(-eyeSpan - 12 + s * 5 + 2, eyeY + 8);
+      ctx.lineTo(-eyeSpan - 12 + s * 5 - 2, eyeY + 15);
+      ctx.moveTo(eyeSpan + 12 + s * 5 + 2, eyeY + 8);
+      ctx.lineTo(eyeSpan + 12 + s * 5 - 2, eyeY + 15);
+      ctx.stroke();
+    }
+    ctx.restore();
+  }
+
+  const mouthY = -8 + breath * 2;
+  ctx.strokeStyle = fColor;
+  ctx.fillStyle = fColor;
+
+  if (faceType === 'line_smile' || faceType === 'sleepy_smile' || faceType === 'blush_smile') {
+    ctx.lineWidth = 4.2;
+    ctx.beginPath();
+    ctx.moveTo(-44, mouthY - 2);
+    ctx.quadraticCurveTo(0, mouthY + 20, 44, mouthY - 2);
+    ctx.stroke();
+  } else if (faceType === 'tongue_out') {
+    ctx.lineWidth = 4.2;
+    ctx.beginPath();
+    ctx.moveTo(-42, mouthY + 2);
+    ctx.quadraticCurveTo(0, mouthY + 18, 42, mouthY - 6);
+    ctx.stroke();
+
+    ctx.save();
+    ctx.translate(-18, mouthY + 9);
+    ctx.rotate(0.15);
+    ctx.fillStyle = charObj.tongueColor;
+    ctx.beginPath();
+    ctx.moveTo(-8, 0);
+    ctx.lineTo(-8, 10);
+    ctx.arc(0, 10, 8, Math.PI, 0, true);
+    ctx.lineTo(8, 0);
+    ctx.fill();
+    ctx.lineWidth = 3.5;
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(0, 2);
+    ctx.lineTo(0, 13);
+    ctx.stroke();
+    ctx.restore();
+  } else if (faceType === 'big_laugh' || faceType === 'expecting_open') {
+    const openH = faceType === 'expecting_open' ? 38 : 30;
+    ctx.save();
+    ctx.fillStyle = charObj.mouthInnerColor;
+    ctx.lineWidth = 4.2;
+    ctx.beginPath();
+    ctx.moveTo(-40, mouthY - 2);
+    ctx.quadraticCurveTo(0, mouthY + 8, 40, mouthY - 2);
+    ctx.bezierCurveTo(44, mouthY + openH, -44, mouthY + openH, -40, mouthY - 2);
+    ctx.closePath();
+    ctx.fill();
+
+    ctx.save();
+    ctx.clip();
+    ctx.fillStyle = charObj.tongueColor;
+    ctx.beginPath();
+    ctx.ellipse(0, mouthY + openH - 2, 28, 16, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+    ctx.stroke();
+    ctx.restore();
+  } else if (faceType === 'chewing_happy') {
+    const chewH = 12 + Math.abs(Math.sin(time * 22)) * 18;
+    ctx.fillStyle = charObj.mouthInnerColor;
+    ctx.lineWidth = 4;
+    ctx.beginPath();
+    ctx.ellipse(0, mouthY + 10, 26, chewH * 0.6, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
+  } else if (faceType === 'surprised_o') {
+    ctx.fillStyle = charObj.mouthInnerColor;
+    ctx.lineWidth = 4;
+    ctx.beginPath();
+    ctx.ellipse(0, mouthY + 12, 11, 15, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.save();
+    ctx.clip();
+    ctx.fillStyle = charObj.tongueColor;
+    ctx.beginPath();
+    ctx.arc(0, mouthY + 24, 10, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+    ctx.stroke();
+  } else if (faceType === 'sick') {
+    ctx.lineWidth = 4;
+    ctx.beginPath();
+    ctx.moveTo(-22, mouthY + 16);
+    ctx.quadraticCurveTo(-11, mouthY + 8, 0, mouthY + 15);
+    ctx.quadraticCurveTo(11, mouthY + 22, 22, mouthY + 14);
+    ctx.stroke();
+  }
+  ctx.restore();
+
+  if (state.clean < 75) {
+    ctx.save();
+    ctx.fillStyle = '#8D6E63';
+    ctx.globalAlpha = 0.45;
+    ctx.beginPath();
+    ctx.arc(-44, 34, 11, 0, Math.PI * 2);
+    ctx.arc(-30, 42, 7, 0, Math.PI * 2);
+    ctx.arc(46, 22, 9, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+  }
+
+  const hatY = -82 + breath * 3;
+  if (hatId === 'schoolhat') {
+    ctx.save();
+    ctx.translate(0, hatY);
+    ctx.fillStyle = '#FFE066';
+    ctx.strokeStyle = fColor;
+    ctx.lineWidth = 4.5;
+    ctx.beginPath();
+    ctx.arc(0, 4, 34, Math.PI, 0);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.ellipse(0, 4, 44, 8, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
+    ctx.restore();
+  } else if (hatId === 'daisy') {
+    ctx.save();
+    ctx.translate(0, hatY - 6);
+    ctx.strokeStyle = fColor;
+    ctx.lineWidth = 4;
+    ctx.fillStyle = '#FFF';
+    for (let a = 0; a < 5; a++) {
+      const ang = (a / 5) * Math.PI * 2;
+      ctx.beginPath();
+      ctx.arc(Math.cos(ang) * 13, Math.sin(ang) * 13, 9, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.stroke();
+    }
+    ctx.fillStyle = '#FFE066';
+    ctx.beginPath();
+    ctx.arc(0, 0, 8, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
+    ctx.restore();
+  } else if (hatId === 'hatty') {
+    ctx.save();
+    ctx.strokeStyle = fColor;
+    ctx.lineWidth = 6;
+    ctx.beginPath();
+    ctx.arc(0, -18, 92, Math.PI * 1.12, Math.PI * 1.88);
+    ctx.stroke();
+    ctx.fillStyle = '#FF8FA3';
+    ctx.beginPath();
+    ctx.ellipse(-90, -12, 13, 22, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.ellipse(90, -12, 13, 22, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
+    ctx.restore();
+  } else if (hatId === 'angel_set') {
+    ctx.save();
+    ctx.translate(0, 34 + breath * 2);
+    ctx.strokeStyle = fColor;
+    ctx.fillStyle = '#FFE066';
+    ctx.lineWidth = 3.5;
+    ctx.beginPath();
+    ctx.ellipse(-14, 0, 12, 7, -0.2, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.ellipse(14, 0, 12, 7, 0.2, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
+    ctx.fillStyle = '#FF8FA3';
+    ctx.beginPath();
+    ctx.arc(0, 0, 6, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
+    ctx.restore();
+  } else if (hatId === 'royal_set') {
+    ctx.save();
+    ctx.strokeStyle = fColor;
+    ctx.translate(0, 32 + breath * 2);
+    ctx.fillStyle = '#FFE066';
+    ctx.lineWidth = 3.5;
+    ctx.beginPath();
+    ctx.arc(0, 0, 11, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
+    ctx.fillStyle = '#FF4D6D';
+    ctx.beginPath();
+    ctx.arc(0, 0, 5.5, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+
+    ctx.save();
+    ctx.strokeStyle = fColor;
+    ctx.translate(0, hatY - 2);
+    ctx.fillStyle = '#FFD166';
+    ctx.lineWidth = 3.8;
+    ctx.beginPath();
+    ctx.moveTo(-24, 6);
+    ctx.lineTo(-28, -18);
+    ctx.lineTo(-10, -6);
+    ctx.lineTo(0, -24);
+    ctx.lineTo(10, -6);
+    ctx.lineTo(28, -18);
+    ctx.lineTo(24, 6);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+    ctx.fillStyle = '#FF4D6D';
+    ctx.beginPath();
+    ctx.arc(0, -5, 4, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = '#4EA8DE';
+    ctx.beginPath();
+    ctx.arc(-14, -3, 3, 0, Math.PI * 2);
+    ctx.arc(14, -3, 3, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+  }
+
+  ctx.restore();
+}
+
+function drawActivityOverlay(ctx, cx, cy, scale, charObj, activity, time) {
+  if (!activity || activity === 'none') return;
+
+  ctx.save();
+  ctx.translate(cx, cy);
+  ctx.scale(scale, scale);
+
+  const breath = Math.sin(time * 3.2);
+  const fColor = charObj.featureColor;
+  ctx.strokeStyle = fColor;
+  ctx.lineCap = 'round';
+  ctx.lineJoin = 'round';
+
+  if (activity === 'reading') {
+    const eyeY = -22 + breath * 2;
+    ctx.save();
+    ctx.lineWidth = 3.5;
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.35)';
+    ctx.beginPath();
+    ctx.arc(-32, eyeY, 13, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.arc(32, eyeY, 13, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(-19, eyeY);
+    ctx.lineTo(19, eyeY);
+    ctx.stroke();
+    ctx.restore();
+
+    const bookY = 48 + Math.sin(time * 4) * 3;
+    ctx.save();
+    ctx.translate(0, bookY);
+    ctx.lineWidth = 4;
+    ctx.fillStyle = '#8E6BA8';
+    ctx.beginPath();
+    ctx.roundRect(-52, -18, 104, 42, 8);
+    ctx.fill();
+    ctx.stroke();
+    ctx.fillStyle = '#FFFDF9';
+    ctx.beginPath();
+    ctx.roundRect(-46, -22, 46, 40, 5);
+    ctx.roundRect(0, -22, 46, 40, 5);
+    ctx.fill();
+    ctx.stroke();
+    ctx.lineWidth = 2.5;
+    ctx.strokeStyle = '#B392D3';
+    for (let line = -12; line <= 8; line += 10) {
+      ctx.beginPath();
+      ctx.moveTo(-36, line); ctx.lineTo(-10, line);
+      ctx.moveTo(10, line);  ctx.lineTo(36, line);
+      ctx.stroke();
+    }
+    ctx.restore();
+  } else if (activity === 'exercising') {
+    ctx.save();
+    ctx.translate(0, -56 + breath * 2);
+    ctx.fillStyle = '#FF758F';
+    ctx.lineWidth = 3.8;
+    ctx.beginPath();
+    ctx.roundRect(-72, -8, 144, 16, 8);
+    ctx.fill();
+    ctx.stroke();
+    ctx.fillStyle = '#FFF';
+    ctx.beginPath();
+    ctx.roundRect(-18, -5, 36, 10, 4);
+    ctx.fill();
+    ctx.restore();
+
+    const liftL = Math.sin(time * 9) * 22;
+    const liftR = Math.sin(time * 9 + Math.PI) * 22;
+    const drawDumbbell = (dx, dy, rot) => {
+      ctx.save();
+      ctx.translate(dx, dy);
+      ctx.rotate(rot);
+      ctx.lineWidth = 3.8;
+      ctx.fillStyle = '#EDE1F3';
+      ctx.beginPath();
+      ctx.roundRect(-18, -4, 36, 8, 3);
+      ctx.fill();
+      ctx.stroke();
+      ctx.fillStyle = '#7CB8D1';
+      ctx.beginPath();
+      ctx.roundRect(-26, -15, 11, 30, 5);
+      ctx.roundRect(15, -15, 11, 30, 5);
+      ctx.fill();
+      ctx.stroke();
+      ctx.restore();
+    };
+    drawDumbbell(-108, 10 + liftL, -0.2);
+    drawDumbbell(108, 10 + liftR, 0.2);
+  } else if (activity === 'tea') {
+    const cupY = 42 + Math.sin(time * 3.5) * 3;
+    ctx.save();
+    ctx.translate(22, cupY);
+    ctx.lineWidth = 3.8;
+    ctx.fillStyle = '#D7B39E';
+    ctx.beginPath();
+    ctx.ellipse(0, 20, 28, 7, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
+    ctx.fillStyle = '#B8E0B8';
+    ctx.beginPath();
+    ctx.roundRect(-20, -12, 40, 32, [4, 4, 16, 16]);
+    ctx.fill();
+    ctx.stroke();
+    ctx.strokeStyle = '#6B9E78';
+    ctx.lineWidth = 2.5;
+    ctx.beginPath();
+    ctx.moveTo(-19, 2); ctx.lineTo(19, 2);
+    ctx.stroke();
+    ctx.strokeStyle = 'rgba(145, 95, 120, 0.45)';
+    ctx.lineWidth = 3;
+    for (let s = -1; s <= 1; s += 2) {
+      const steamOff = Math.sin(time * 5 + s) * 4;
+      ctx.beginPath();
+      ctx.moveTo(s * 8, -18);
+      ctx.quadraticCurveTo(s * 8 + steamOff, -28, s * 8 - steamOff, -38);
+      ctx.stroke();
+    }
+    ctx.restore();
+  } else if (activity === 'sleeping') {
+    ctx.save();
+    ctx.translate(42, -74 + breath * 2.5);
+    ctx.rotate(0.25);
+    ctx.fillStyle = '#B392D3';
+    ctx.lineWidth = 3.8;
+    ctx.beginPath();
+    ctx.moveTo(-32, 10);
+    ctx.quadraticCurveTo(5, -36, 44, 16);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+    ctx.fillStyle = '#FFF';
+    ctx.beginPath();
+    ctx.arc(46, 18, 11, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
+    ctx.restore();
+  } else if (activity === 'painting') {
+    ctx.save();
+    ctx.translate(-72, 36 + breath * 2);
+    ctx.fillStyle = '#F3D5B5';
+    ctx.lineWidth = 3.6;
+    ctx.beginPath();
+    ctx.ellipse(0, 0, 32, 22, -0.2, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
+    const dotColors = ['#FF758F', '#7CB8D1', '#FFE066'];
+    [-14, 0, 14].forEach((dx, i) => {
+      ctx.fillStyle = dotColors[i];
+      ctx.beginPath();
+      ctx.arc(dx, -4 + Math.abs(dx) * 0.2, 6, 0, Math.PI * 2);
+      ctx.fill();
+    });
+    ctx.restore();
+
+    const brushSwing = Math.sin(time * 8) * 0.35;
+    ctx.save();
+    ctx.translate(78, 22);
+    ctx.rotate(brushSwing);
+    ctx.fillStyle = '#D4A373';
+    ctx.lineWidth = 3.5;
+    ctx.beginPath();
+    ctx.roundRect(-5, -24, 10, 44, 4);
+    ctx.fill();
+    ctx.stroke();
+    ctx.fillStyle = '#FF758F';
+    ctx.beginPath();
+    ctx.arc(0, -30, 9, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
+    ctx.restore();
+  }
+
+  ctx.restore();
+}
+
+function drawHandDrawnFood(ctx, x, y, foodId, scale = 1) {
+  ctx.save();
+  ctx.translate(x, y);
+  ctx.scale(scale, scale);
+  ctx.lineWidth = 4.2;
+  ctx.strokeStyle = '#5D4370';
+  ctx.lineCap = 'round';
+  ctx.lineJoin = 'round';
+
+  if (foodId === 'dango') {
+    ctx.beginPath();
+    ctx.moveTo(0, -36);
+    ctx.lineTo(0, 38);
+    ctx.stroke();
+    const dangoColors = ['#F9C6D9', '#FFFDF9', '#B8E0B8'];
+    [-18, 0, 18].forEach((dy, idx) => {
+      ctx.fillStyle = dangoColors[idx];
+      ctx.beginPath();
+      ctx.arc(0, dy, 13, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.stroke();
+    });
+  } else if (foodId === 'candy') {
+    ctx.fillStyle = '#FFE066';
+    ctx.beginPath();
+    for (let i = 0; i < 10; i++) {
+      const r = i % 2 === 0 ? 24 : 12;
+      const a = (i / 10) * Math.PI * 2 - Math.PI / 2;
+      if (i === 0) ctx.moveTo(Math.cos(a) * r, Math.sin(a) * r);
+      else ctx.lineTo(Math.cos(a) * r, Math.sin(a) * r);
+    }
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+  } else if (foodId === 'jelly') {
+    ctx.fillStyle = '#FF758F';
+    ctx.beginPath();
+    ctx.arc(0, 4, 22, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
+    ctx.fillStyle = '#95D5B2';
+    ctx.beginPath();
+    ctx.ellipse(0, -16, 12, 5, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
+  } else if (foodId === 'pudding') {
+    ctx.fillStyle = '#FFE066';
+    ctx.beginPath();
+    ctx.moveTo(-24, 18);
+    ctx.lineTo(-16, -14);
+    ctx.lineTo(16, -14);
+    ctx.lineTo(24, 18);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+    ctx.fillStyle = '#8D5B4C';
+    ctx.beginPath();
+    ctx.ellipse(0, -12, 16, 6, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
+    ctx.fillStyle = '#FF4D6D';
+    ctx.beginPath();
+    ctx.arc(0, -20, 6, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
+  } else {
+    ctx.fillStyle = '#FFFDF9';
+    ctx.beginPath();
+    ctx.roundRect(-24, -8, 48, 30, 6);
+    ctx.fill();
+    ctx.stroke();
+    ctx.fillStyle = '#F9C6D9';
+    ctx.fillRect(-22, 4, 44, 8);
+    ctx.fillStyle = '#FF4D6D';
+    ctx.beginPath();
+    ctx.arc(0, -16, 8, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
+  }
+  ctx.restore();
+}
+
+// ============================================================================
+// 3. 畫布互動
+// ============================================================================
+const watchCanvas = document.getElementById('petCanvas');
+const wCtx = watchCanvas.getContext('2d');
+const wizCanvas = document.getElementById('wizardPreviewCanvas');
+const wizCtx = wizCanvas.getContext('2d');
+
+function getCanvasPos(e) {
+  const rect = watchCanvas.getBoundingClientRect();
+  const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+  const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+  return {
+    x: ((clientX - rect.left) / rect.width) * watchCanvas.width,
+    y: ((clientY - rect.top) / rect.height) * watchCanvas.height
+  };
+}
+
+watchCanvas.addEventListener('pointerdown', (e) => {
+  const pos = getCanvasPos(e);
+  state.pointer.down = true;
+  state.pointer.x = pos.x;
+  state.pointer.y = pos.y;
+  state.pointer.startX = pos.x;
+  state.pointer.startY = pos.y;
+  state.pointer.lastX = pos.x;
+  state.pointer.lastY = pos.y;
+
+  if (state.mode === 'home') {
+    const dist = Math.hypot(pos.x - 280, pos.y - 268);
+    if (dist < 145) {
+      state.happy = Math.min(100, state.happy + 5);
+      state.faceVariantIdx = (state.faceVariantIdx + 1) % IDLE_FACES.length;
+      state.squishVelocity = 0.22;
+      state.happyJumpTimer = 35;
+      const actEmoji = state.activity === 'reading' ? '💡' : state.activity === 'exercising' ? '💦' : state.activity === 'tea' ? '🍵' : state.activity === 'painting' ? '🎨' : '🩷';
+      spawnParticles(pos.x, pos.y - 30, actEmoji, 5);
+      updatePhoneUI();
+    }
+  } else if (state.mode === 'game') {
+    handleRpsClick(pos.x, pos.y);
+  }
+});
+
+window.addEventListener('pointermove', (e) => {
+  if (!state.pointer.down) return;
+  const pos = getCanvasPos(e);
+  const moveDist = Math.hypot(pos.x - state.pointer.lastX, pos.y - state.pointer.lastY);
+  state.pointer.x = pos.x;
+  state.pointer.y = pos.y;
+
+  if (state.mode === 'bath' && state.rinseTimer <= 0) {
+    const distToPet = Math.hypot(pos.x - 280, pos.y - 265);
+    if (distToPet < 145 && moveDist > 6 && state.bubbles.length < 26) {
+      state.bubbles.push({
+        x: pos.x + (Math.random() - 0.5) * 28,
+        y: pos.y + (Math.random() - 0.5) * 28,
+        r: 14 + Math.random() * 16,
+        hue: Math.random() > 0.5 ? '#E1F5FE' : '#FCE4EC'
+      });
+      state.squishVelocity = 0.09;
+      state.pointer.lastX = pos.x;
+      state.pointer.lastY = pos.y;
+
+      if (state.bubbles.length >= 26) {
+        state.rinseTimer = 75;
+        state.clean = 100;
+        state.happy = Math.min(100, state.happy + 15);
+        state.coins += 20;
+        updatePhoneUI();
+      }
+    }
+  }
+});
+
+window.addEventListener('pointerup', () => {
+  if (!state.pointer.down) return;
+  state.pointer.down = false;
+
+  if (state.mode === 'feed' && !state.thrownFood) {
+    const dy = state.pointer.y - state.pointer.startY;
+    if (dy < -15 || state.pointer.y < 350) {
+      const stageFoods = getUnlockedFoods();
+      const chosenFood = stageFoods[state.selectedFood] || stageFoods[0];
+      state.thrownFood = {
+        x: state.pointer.x,
+        y: state.pointer.y,
+        targetX: 280,
+        targetY: 250,
+        progress: 0,
+        foodItem: chosenFood
+      };
+    }
+  }
+
+  if (state.mode === 'heal' && state.isSick) {
+    const dist = Math.hypot(state.pointer.x - 280, state.pointer.y - 265);
+    if (dist < 140) {
+      state.isSick = false;
+      state.health = 100;
+      state.happyJumpTimer = 55;
+      state.squishVelocity = 0.25;
+      spawnParticles(280, 210, '✨', 8);
+      updatePhoneUI();
+    }
+  }
+});
+
+function spawnParticles(x, y, symbol, count) {
+  const maxParticles = 120;
+  if (state.particles.length >= maxParticles) {
+    state.particles.splice(0, state.particles.length - maxParticles + count);
+  }
+  for (let i = 0; i < count; i++) {
+    state.particles.push({
+      x,
+      y,
+      vx: (Math.random() - 0.5) * 8,
+      vy: -Math.random() * 6 - 2,
+      symbol,
+      life: 45 + Math.random() * 20
+    });
+  }
+}
+
+function gainExp(amount) {
+  const safeAmount = Math.max(0, Math.min(100, Number(amount) || 0));
+  if (state.level < 3) state.exp = Math.min(99, state.exp + safeAmount);
+  else state.exp = 0;
+  saveGame();
+}
+
+// ============================================================================
+// 4. 主渲染迴圈
+// ============================================================================
+function renderLoop() {
+  state.animTime += 0.035;
+
+  state.squishAmount += state.squishVelocity;
+  state.squishVelocity += (0 - state.squishAmount) * 0.25;
+  state.squishVelocity *= 0.78;
+
+  if (!document.getElementById('wizardOverlay').classList.contains('hidden')) {
+    wizCtx.clearRect(0, 0, wizCanvas.width, wizCanvas.height);
+    drawDittoCharacter(
+      wizCtx,
+      140,
+      138,
+      0.88,
+      CHARACTERS[state.charIndex],
+      'normal',
+      state.animTime,
+      state.equippedHat,
+      false
+    );
+  }
+
+  const isNightBg = (state.mode === 'home' && state.activity === 'sleeping');
+  wCtx.clearRect(0, 0, watchCanvas.width, watchCanvas.height);
+  if (isNightBg) {
+    const night = wCtx.createLinearGradient(0, 0, 0, watchCanvas.height);
+    night.addColorStop(0, '#252B58'); night.addColorStop(1, '#66527F');
+    wCtx.fillStyle = night; wCtx.fillRect(0, 0, watchCanvas.width, watchCanvas.height);
+    for (let i = 0; i < 32; i++) {
+      const sx = (i * 83 + 29) % watchCanvas.width;
+      const sy = (i * 47 + 18) % 300;
+      const twinkle = 0.45 + (Math.sin(state.animTime * 2 + i) + 1) * 0.25;
+      wCtx.globalAlpha = twinkle; wCtx.fillStyle = '#FFF7C7';
+      wCtx.beginPath(); wCtx.arc(sx, sy, i % 4 === 0 ? 3 : 1.8, 0, Math.PI * 2); wCtx.fill();
+    }
+    wCtx.globalAlpha = 1;
+    wCtx.fillStyle = '#FFF1B8'; wCtx.beginPath(); wCtx.arc(465, 85, 28, 0, Math.PI * 2); wCtx.fill();
+    wCtx.fillStyle = '#252B58'; wCtx.beginPath(); wCtx.arc(478, 75, 26, 0, Math.PI * 2); wCtx.fill();
+  } else {
+    wCtx.fillStyle = '#FFF9FC'; wCtx.fillRect(0, 0, watchCanvas.width, watchCanvas.height);
+    wCtx.strokeStyle = 'rgba(218, 195, 232, 0.28)'; wCtx.lineWidth = 2;
+    for (let x = 0; x < watchCanvas.width; x += 40) {
+      wCtx.beginPath(); wCtx.moveTo(x, 0); wCtx.lineTo(x, watchCanvas.height); wCtx.stroke();
+    }
+    for (let y = 0; y < watchCanvas.height; y += 40) {
+      wCtx.beginPath(); wCtx.moveTo(0, y); wCtx.lineTo(watchCanvas.width, y); wCtx.stroke();
+    }
+  }
+
+  wCtx.fillStyle = isNightBg ? 'rgba(20, 19, 49, .35)' : '#F2E3F9';
+  wCtx.beginPath(); wCtx.ellipse(280, 378, 140, 30, 0, 0, Math.PI * 2); wCtx.fill();
+
+  const charObj = CHARACTERS[state.charIndex];
+
+  let expression = 'normal';
+  let isBathingNow = false;
+
+  if (state.mode === 'home' && state.activity === 'sleeping') {
+    expression = 'sleep';
+  } else if (state.isSick) {
+    expression = 'sick';
+  } else if (state.chewTimer > 0) {
+    expression = 'chewing';
+    state.chewTimer--;
+    if (state.chewTimer % 6 === 0) {
+      spawnParticles(280 + (Math.random() - 0.5) * 40, 255, '✨', 1);
+    }
+  } else if (state.mode === 'feed' && (state.pointer.down || state.thrownFood)) {
+    expression = 'expecting';
+  } else if (state.mode === 'bath' && (state.pointer.down || state.bubbles.length > 0)) {
+    expression = 'bathing';
+    isBathingNow = state.pointer.down;
+  } else if (state.happyJumpTimer > 0) {
+    expression = 'happy';
+    state.happyJumpTimer--;
+  } else if (state.mode === 'home' && state.activity === 'tea') {
+    expression = 'bathing';
+  }
+
+  const exerciseBounce = (state.mode === 'home' && state.activity === 'exercising')
+    ? -Math.abs(Math.sin(state.animTime * 9)) * 12
+    : 0;
+  const jumpOffset = (state.happyJumpTimer > 0 ? -Math.abs(Math.sin(state.animTime * 15)) * 18 : 0) + exerciseBounce;
+
+  if (state.mode !== 'game') {
+    const growthScale = LEVEL_CONFIG[state.level].scale;
+    const petY = 272 + jumpOffset;
+
+    drawDittoCharacter(
+      wCtx, 280, petY, growthScale,
+      charObj, expression, state.animTime, state.equippedHat, isBathingNow
+    );
+
+    if (state.mode === 'home' && state.activity !== 'none') {
+      drawActivityOverlay(wCtx, 280, petY, growthScale, charObj, state.activity, state.animTime);
+    }
+  }
+
+  if (state.mode === 'home') {
+    const actInfo = DAILY_ACTIVITIES[state.activity] || DAILY_ACTIVITIES.none;
+
+    if (state.activity === 'sleeping') {
+      wCtx.textAlign = 'center';
+      wCtx.fillStyle = '#FFF7D6';
+      wCtx.font = '900 22px sans-serif';
+      const zOffset = Math.sin(state.animTime * 2) * 5;
+      wCtx.fillText('Z z Z', 395, 210 + zOffset);
+    }
+
+    wCtx.save();
+    wCtx.fillStyle = isNightBg ? 'rgba(255, 249, 252, 0.94)' : 'rgba(255, 255, 255, 0.94)';
+    wCtx.strokeStyle = '#4A355B';
+    wCtx.lineWidth = 3;
+    wCtx.beginPath();
+    wCtx.roundRect(65, 84, 430, 42, 20);
+    wCtx.fill();
+    wCtx.stroke();
+    wCtx.fillStyle = '#4A355B';
+    wCtx.font = '900 17.5px Nunito, Noto Sans TC, sans-serif';
+    wCtx.textAlign = 'center';
+    wCtx.fillText(actInfo.bubble, 280, 111);
+    wCtx.restore();
+  }
+
+  if (state.mode === 'feed') {
+    const stageFoods = getUnlockedFoods();
+    const currentFood = stageFoods[state.selectedFood] || stageFoods[0];
+
+    if (state.thrownFood) {
+      state.thrownFood.progress += 0.08;
+      const t = state.thrownFood.progress;
+      const curX = state.thrownFood.x + (state.thrownFood.targetX - state.thrownFood.x) * t;
+      const curY = state.thrownFood.y + (state.thrownFood.targetY - state.thrownFood.y) * t - Math.sin(t * Math.PI) * 110;
+      drawHandDrawnFood(wCtx, curX, curY, state.thrownFood.foodItem.id, 1.35);
+
+      if (t >= 1) {
+        const foodItem = state.thrownFood.foodItem;
+        state.hunger = Math.min(100, state.hunger + foodItem.hunger);
+        state.happy = Math.min(100, state.happy + foodItem.happy);
+        gainExp(25);
+        state.chewTimer = 55;
+        state.squishVelocity = 0.24;
+        spawnParticles(280, 220, '🩷', 6);
+        state.thrownFood = null;
+        updatePhoneUI();
+      }
+    } else {
+      const foodX = state.pointer.down ? state.pointer.x : 280;
+      const foodY = state.pointer.down ? state.pointer.y : 410;
+
+      if (!state.pointer.down) {
+        wCtx.save();
+        wCtx.setLineDash([8, 8]);
+        wCtx.strokeStyle = '#9E7BBF';
+        wCtx.lineWidth = 3.5;
+        wCtx.beginPath();
+        wCtx.moveTo(280, 380);
+        wCtx.lineTo(280, 285);
+        wCtx.stroke();
+        wCtx.restore();
+      }
+      drawHandDrawnFood(wCtx, foodX, foodY, currentFood.id, state.pointer.down ? 1.5 : 1.3);
+    }
+  } else if (state.mode === 'bath') {
+    for (let b of state.bubbles) {
+      wCtx.save();
+      wCtx.fillStyle = b.hue;
+      wCtx.strokeStyle = '#7CB8D1';
+      wCtx.lineWidth = 3.5;
+      wCtx.beginPath();
+      wCtx.arc(b.x, b.y + Math.sin(state.animTime * 4 + b.x) * 3, b.r, 0, Math.PI * 2);
+      wCtx.fill();
+      wCtx.stroke();
+      wCtx.fillStyle = '#FFF';
+      wCtx.beginPath();
+      wCtx.arc(b.x - b.r * 0.3, b.y - b.r * 0.3, b.r * 0.22, 0, Math.PI * 2);
+      wCtx.fill();
+      wCtx.restore();
+    }
+
+    if (state.rinseTimer > 0) {
+      state.rinseTimer--;
+      wCtx.strokeStyle = '#81D4FA';
+      wCtx.lineWidth = 5;
+      for (let i = 0; i < 12; i++) {
+        const rx = 160 + i * 22 + Math.sin(state.animTime * 20 + i) * 8;
+        const ry = ((state.animTime * 400 + i * 50) % 320) + 75;
+        wCtx.beginPath();
+        wCtx.moveTo(rx, ry);
+        wCtx.lineTo(rx, ry + 26);
+        wCtx.stroke();
+      }
+      if (state.rinseTimer === 1) {
+        state.bubbles = [];
+        state.happyJumpTimer = 50;
+        spawnParticles(280, 215, '✨', 8);
+      }
+    }
+
+    const pct = Math.min(100, Math.round((state.bubbles.length / 26) * 100));
+    wCtx.fillStyle = '#4A355B';
+    wCtx.font = '900 21px Nunito, Noto Sans TC';
+    wCtx.textAlign = 'center';
+    wCtx.fillText(state.rinseTimer > 0 ? '🚿 沖水洗香香中！' : `🫧 來回滑動塗抹泡泡：${pct}%`, 280, 470);
+
+    const spX = state.pointer.down ? state.pointer.x : 410;
+    const spY = state.pointer.down ? state.pointer.y : 370;
+    wCtx.save();
+    wCtx.fillStyle = '#FFE066';
+    wCtx.strokeStyle = '#5D4370';
+    wCtx.lineWidth = 4.5;
+    wCtx.beginPath();
+    wCtx.roundRect(spX - 30, spY - 20, 60, 40, 16);
+    wCtx.fill();
+    wCtx.stroke();
+    wCtx.restore();
+  } else if (state.mode === 'heal') {
+    wCtx.fillStyle = '#4A355B';
+    wCtx.font = '900 19px Nunito, Noto Sans TC';
+    wCtx.textAlign = 'center';
+    wCtx.fillText(
+      state.isSick ? '💉 按住並拖曳下方針筒到軟泥身上治療！' : '💚 小軟泥很健康！(可從左上日記測試打針)',
+      280,
+      470
+    );
+
+    const syrX = state.pointer.down ? state.pointer.x : 280;
+    const syrY = state.pointer.down ? state.pointer.y : 420;
+    wCtx.font = '52px serif';
+    wCtx.fillText('💉', syrX, syrY);
+  } else if (state.mode === 'game') {
+    renderRpsMiniGame(wCtx, charObj);
+  }
+
+  for (let i = state.particles.length - 1; i >= 0; i--) {
+    const p = state.particles[i];
+    p.x += p.vx;
+    p.y += p.vy;
+    p.life--;
+    wCtx.font = '28px serif';
+    wCtx.fillText(p.symbol, p.x, p.y);
+    if (p.life <= 0) state.particles.splice(i, 1);
+  }
+
+  requestAnimationFrame(renderLoop);
+}
+
+// ============================================================================
+// 5. 猜拳小遊戲
+// ============================================================================
+function renderRpsMiniGame(ctx, charObj) {
+  drawDittoCharacter(ctx, 280, 195, 0.82, charObj, 'happy', state.animTime, state.equippedHat, false);
+
+  ctx.fillStyle = '#4A355B';
+  ctx.font = '900 20px Nunito, Noto Sans TC';
+  ctx.textAlign = 'center';
+  ctx.fillText(state.rpsState.resultText, 280, 330);
+
+  if (state.rpsState.playerChoice) {
+    ctx.font = '900 22px Nunito, Noto Sans TC';
+    ctx.fillText(`你出 ${state.rpsState.playerChoice}  VS  軟泥出 ${state.rpsState.petChoice}`, 280, 366);
+  }
+
+  const btns = [
+    { icon: '✊', label: '石頭', x: 130, y: 435 },
+    { icon: '✌️', label: '剪刀', x: 280, y: 435 },
+    { icon: '🖐️', label: '布', x: 430, y: 435 }
+  ];
+  for (let b of btns) {
+    ctx.save();
+    ctx.fillStyle = '#F9C6D9';
+    ctx.strokeStyle = '#4A355B';
+    ctx.lineWidth = 4.5;
+    ctx.beginPath();
+    ctx.roundRect(b.x - 50, b.y - 34, 100, 68, 22);
+    ctx.fill();
+    ctx.stroke();
+    ctx.fillStyle = '#4A355B';
+    ctx.font = '32px serif';
+    ctx.fillText(b.icon, b.x, b.y + 10);
+    ctx.restore();
+  }
+}
+
+function handleRpsClick(x, y) {
+  const choices = ['✊', '✌️', '🖐️'];
+  const xs = [130, 280, 430];
+  for (let i = 0; i < 3; i++) {
+    if (Math.hypot(x - xs[i], y - 435) < 60) {
+      const p = choices[i];
+      const c = choices[Math.floor(Math.random() * 3)];
+      state.rpsState.playerChoice = p;
+      state.rpsState.petChoice = c;
+      state.squishVelocity = 0.2;
+      if (p === c) {
+        state.rpsState.resultText = '🤝 平手！再來一局！';
+      } else if (
+        (p === '✊' && c === '✌️') ||
+        (p === '✌️' && c === '🖐️') ||
+        (p === '🖐️' && c === '✊')
+      ) {
+        state.rpsState.resultText = '🎉 你贏了！獲得 +30G 金幣與快樂！';
+        state.coins += 30;
+        state.happy = Math.min(100, state.happy + 15);
+        spawnParticles(280, 195, '🎵', 6);
+        updatePhoneUI();
+      } else {
+        state.rpsState.resultText = `😆 ${CHARACTERS[state.charIndex].shortName} 贏囉！(+10G)`;
+        state.coins += 10;
+        updatePhoneUI();
+      }
+    }
+  }
+}
+
+// ============================================================================
+// 6. 控制與選單邏輯
+// ============================================================================
+function toggleDiaryDrawer(show) {
+  const drawer = document.getElementById('diaryDrawer');
+  if (!drawer) return;
+  drawer.classList.toggle('hidden', !show);
+}
+
+function setPetLevel(newLv) {
+  const lv = Math.max(1, Math.min(3, newLv));
+  state.level = lv;
+  const unlockedFoods = getUnlockedFoods();
+  if (state.selectedFood >= unlockedFoods.length) {
+    state.selectedFood = 0;
+  }
+
+  const allowedActs = getUnlockedActivities();
+  if (!allowedActs.includes(state.activity) && state.activity !== 'none') {
+    state.activity = allowedActs[allowedActs.length - 1];
+  }
+
+  const curHatObj = SHOP_HATS.find(h => h.id === state.equippedHat);
+  if (curHatObj && curHatObj.unlockLv > lv) {
+    state.equippedHat = 'none';
+  }
+
+  state.squishVelocity = 0.24;
+  state.happyJumpTimer = 40;
+  spawnParticles(280, 200, '✨', 7);
+
+  const count = LEVEL_CONFIG[lv].count;
+  const toast = document.getElementById('syncToast');
+  if (toast) {
+    toast.textContent = `🌟 已切換至 Lv.${lv}！開放 ${count} 種食物、${count} 種日常與 ${count} 種配件！`;
+  }
+  updatePhoneUI();
+}
+
+function renderDynamicStageControls() {
+  const unlockedActs = getUnlockedActivities();
+  const unlockedFoods = getUnlockedFoods();
+
+  const watchActBar = document.getElementById('activityPickerBar');
+  if (watchActBar) {
+    watchActBar.replaceChildren();
+    unlockedActs.forEach(actId => {
+      const actObj = DAILY_ACTIVITIES[actId];
+      const btn = document.createElement('button');
+      btn.className = 'act-pill' + (state.activity === actId ? ' active' : '');
+      btn.textContent = actObj.shortBtn;
+      btn.addEventListener('click', () => setDailyActivity(actId));
+      watchActBar.appendChild(btn);
+    });
+  }
+
+  const phoneActGrid = document.getElementById('phoneActivityGrid');
+  if (phoneActGrid) {
+    phoneActGrid.replaceChildren();
+    unlockedActs.forEach(actId => {
+      const actObj = DAILY_ACTIVITIES[actId];
+      const btn = document.createElement('button');
+      btn.className = 'crayon-btn' + (state.activity === actId ? ' active-act' : '');
+      btn.textContent = actObj.phoneBtn;
+      btn.addEventListener('click', () => {
+        setDailyActivity(actId);
+        toggleDiaryDrawer(false);
+      });
+      phoneActGrid.appendChild(btn);
+    });
+  }
+
+  const foodBar = document.getElementById('foodPickerBar');
+  if (foodBar) {
+    foodBar.replaceChildren();
+    unlockedFoods.forEach((f, idx) => {
+      const slot = document.createElement('div');
+      slot.className = 'food-slot' + (state.selectedFood === idx ? ' selected' : '');
+      slot.innerHTML = `${f.icon}<span>${f.name}</span>`;
+      slot.addEventListener('click', () => selectFood(idx));
+      foodBar.appendChild(slot);
+    });
+  }
+}
+
+function setDailyActivity(actId, isInitialOpen = false) {
+  if (!DAILY_ACTIVITIES[actId]) return;
+  document.getElementById('wizardOverlay').classList.add('hidden');
+  state.activity = actId;
+  switchMode('home');
+
+  state.squishVelocity = 0.22;
+  if (!isInitialOpen) {
+    if (actId === 'reading') {
+      state.happy = Math.min(100, state.happy + 5);
+      spawnParticles(280, 195, '📖', 5);
+    } else if (actId === 'exercising') {
+      state.health = Math.min(100, state.health + 5);
+      spawnParticles(280, 195, '💪', 5);
+    } else if (actId === 'tea') {
+      state.hunger = Math.min(100, state.hunger + 5);
+      spawnParticles(280, 195, '🍵', 5);
+    } else if (actId === 'painting') {
+      state.happy = Math.min(100, state.happy + 6);
+      spawnParticles(280, 195, '🎨', 5);
+    } else if (actId === 'sleeping') {
+      spawnParticles(280, 195, '🌙', 5);
+    } else {
+      spawnParticles(280, 195, '🫧', 4);
+    }
+  }
+
+  const actObj = DAILY_ACTIVITIES[actId];
+  const toast = document.getElementById('syncToast');
+  if (toast) toast.textContent = actObj.toast;
+
+  updatePhoneUI();
+}
+
+function randomizeAppOpenActivity(isFirstLoad = false) {
+  const pool = getUnlockedActivities();
+  const candidates = pool.filter(a => a !== state.activity);
+  const targetPool = (!isFirstLoad && candidates.length > 0) ? candidates : pool;
+  const picked = targetPool[Math.floor(Math.random() * targetPool.length)];
+  setDailyActivity(picked, isFirstLoad);
+  toggleDiaryDrawer(false);
+}
+
+function cycleWizChar(dir) {
+  state.charIndex = (state.charIndex + dir + CHARACTERS.length) % CHARACTERS.length;
+  const c = CHARACTERS[state.charIndex];
+  document.getElementById('wizCharName').textContent = c.name;
+  document.getElementById('wizCharBio').textContent = c.bio;
+  document.getElementById('petNameInput').value = c.shortName;
+}
+
+function goWizStep(step) {
+  document.getElementById('wizStep1').style.display = step === 1 ? 'block' : 'none';
+  document.getElementById('wizStep2').style.display = step === 2 ? 'block' : 'none';
+  document.getElementById('wizStep3').style.display = step === 3 ? 'block' : 'none';
+}
+
+function selectGender(gText, elId) {
+  state.gender = gText;
+  ['genBoy', 'genGirl', 'genFree'].forEach(id => {
+    document.getElementById(id).classList.toggle('selected', id === elId);
+  });
+}
+
+function setPresetName(name) {
+  document.getElementById('petNameInput').value = name;
+}
+
+function finishWizard() {
+  const input = document.getElementById('petNameInput');
+  const val = String(input?.value ?? '').replace(/[\u0000-\u001F\u007F]/g, '').trim().slice(0, 10);
+  state.petName = val || CHARACTERS[state.charIndex].shortName;
+  document.getElementById('wizardOverlay').classList.add('hidden');
+  state.squishVelocity = 0.25;
+  spawnParticles(280, 230, '🎉', 8);
+  updatePhoneUI();
+}
+
+function resetWizard() {
+  toggleDiaryDrawer(false);
+  goWizStep(1);
+  const nameInput = document.getElementById('petNameInput');
+  if (nameInput) nameInput.value = state.petName || CHARACTERS[state.charIndex].shortName;
+  document.getElementById('wizardOverlay').classList.remove('hidden');
+}
+
+function quickSwitchChar(idx) {
+  state.charIndex = idx;
+  state.petName = CHARACTERS[idx].shortName;
+  document.getElementById('wizardOverlay').classList.add('hidden');
+  toggleDiaryDrawer(false);
+  state.squishVelocity = 0.25;
+  spawnParticles(280, 230, '✨', 6);
+  updatePhoneUI();
+}
+
+function triggerExpressionDemo() {
+  document.getElementById('wizardOverlay').classList.add('hidden');
+  toggleDiaryDrawer(false);
+  switchMode('home');
+  state.faceVariantIdx = (state.faceVariantIdx + 1) % IDLE_FACES.length;
+  state.squishVelocity = 0.26;
+  spawnParticles(280, 215, '🩷', 4);
+}
+
+function switchMode(newMode) {
+  const modes = ['home', 'feed', 'bath', 'heal', 'game'];
+  if (!modes.includes(newMode)) return;
+  state.mode = newMode;
+  modes.forEach(m => {
+    const btn = document.getElementById('tab-' + m);
+    if (btn) btn.classList.toggle('active', m === newMode);
+  });
+
+  const pickerBar = document.getElementById('foodPickerBar');
+  if (pickerBar) pickerBar.classList.toggle('hidden', newMode !== 'feed');
+
+  const actBar = document.getElementById('activityPickerBar');
+  if (actBar) actBar.classList.toggle('hidden', newMode !== 'home');
+
+  const actInfo = DAILY_ACTIVITIES[state.activity] || DAILY_ACTIVITIES.none;
+  const hints = {
+    home: actInfo.hint,
+    feed: '🍡 上滑拋投食物',
+    bath: '🧽 來回滑動抹泡泡',
+    heal: '💉 拖曳針筒治療',
+    game: '🎵 點擊出拳猜拳'
+  };
+  const hintEl = document.getElementById('hudModeHint');
+  if (hintEl) hintEl.textContent = hints[newMode];
+}
+
+function selectFood(idx) {
+  const maxIdx = getUnlockedFoods().length - 1;
+  state.selectedFood = Math.max(0, Math.min(maxIdx, idx));
+  renderDynamicStageControls();
+}
+
+function triggerDirty() {
+  state.clean = 35;
+  document.getElementById('wizardOverlay').classList.add('hidden');
+  toggleDiaryDrawer(false);
+  switchMode('bath');
+  updatePhoneUI();
+}
+
+function triggerSick() {
+  state.isSick = true;
+  state.health = 40;
+  document.getElementById('wizardOverlay').classList.add('hidden');
+  toggleDiaryDrawer(false);
+  switchMode('heal');
+  updatePhoneUI();
+}
+
+function addSteps(amount) {
+  const allowedAmounts = new Set([500, 2000]);
+  if (!allowedAmounts.has(amount)) return;
+  state.steps = Math.min(100000000, state.steps + amount);
+  const earned = Math.round(amount / 20);
+  state.coins = Math.min(1000000, state.coins + earned);
+  state.happy = Math.min(100, state.happy + 5);
+  state.squishVelocity = 0.2;
+  const toast = document.getElementById('syncToast');
+  if (toast) toast.textContent = `🏃 步數同步：+${amount} 步，獲得 +${earned}G 金幣！`;
+  updatePhoneUI();
+}
+
+function renderShop() {
+  const grid = document.getElementById('shopGrid');
+  if (!grid) return;
+  grid.replaceChildren();
+
+  const shopLabel = document.getElementById('shopUnlockLabel');
+  if (shopLabel) {
+    shopLabel.textContent = `Lv.${state.level} 已開放 ${LEVEL_CONFIG[state.level].count} / 5 種`;
+  }
+
+  const visibleHats = SHOP_HATS.filter(h => h.unlockLv <= state.level);
+
+  visibleHats.forEach(hat => {
+    const isEquipped = state.equippedHat === hat.id;
+    const card = document.createElement('div');
+    card.className = 'shop-item';
+
+    const iconEl = document.createElement('div');
+    iconEl.style.fontSize = '18px';
+    iconEl.textContent = String(hat.icon ?? '');
+
+    const titleEl = document.createElement('div');
+    titleEl.className = 'hat-title';
+    titleEl.textContent = String(hat.name ?? '配件');
+
+    const subEl = document.createElement('div');
+    subEl.className = 'hat-sub';
+    subEl.textContent = String(hat.sub ?? '');
+
+    const actions = document.createElement('div');
+    actions.style.width = '100%';
+    const button = document.createElement('button');
+    button.className = 'crayon-btn' + (isEquipped ? ' accent' : '');
+    button.style.width = '100%';
+    button.style.padding = '3px';
+
+    if (isEquipped) {
+      button.disabled = true;
+      button.textContent = '穿戴中 ✓';
+    } else if (hat.owned) {
+      button.textContent = '穿戴';
+      button.addEventListener('click', () => {
+        equipHat(hat.id);
+        toggleDiaryDrawer(false);
+      });
+    } else {
+      button.textContent = `購買 (${hat.price}G)`;
+      button.addEventListener('click', () => {
+        buyHat(hat.id);
+      });
+    }
+
+    actions.appendChild(button);
+    card.append(iconEl, titleEl, subEl, actions);
+    grid.appendChild(card);
+  });
+}
+
+function buyHat(id) {
+  const hat = SHOP_HATS.find(h => h.id === id);
+  if (!hat || hat.unlockLv > state.level) return;
+  if (state.coins < hat.price) {
+    const toast = document.getElementById('syncToast');
+    if (toast) toast.textContent = '⚠️ 金幣不足！請按下方「+2000步」賺金幣！';
+    return;
+  }
+  state.coins -= hat.price;
+  hat.owned = true;
+  state.equippedHat = hat.id;
+  document.getElementById('wizardOverlay').classList.add('hidden');
+  state.squishVelocity = 0.22;
+  spawnParticles(280, 180, '🎀', 6);
+  const toast = document.getElementById('syncToast');
+  if (toast) toast.textContent = `🎉 已購買並穿戴「${hat.name}」！`;
+  updatePhoneUI();
+  toggleDiaryDrawer(false);
+}
+
+function equipHat(id) {
+  const hat = SHOP_HATS.find(h => h.id === id);
+  if (!hat || !hat.owned || hat.unlockLv > state.level) return;
+  state.equippedHat = id;
+  document.getElementById('wizardOverlay').classList.add('hidden');
+  state.squishVelocity = 0.2;
+  spawnParticles(280, 180, '✨', 5);
+  const toast = document.getElementById('syncToast');
+  if (toast) toast.textContent = `✨ 已換上「${hat.name}」！`;
+  updatePhoneUI();
+}
+
+function growthTick() {
+  const now = Date.now();
+  const elapsed = Math.max(0, Math.min(5 * 60 * 1000, now - state.lastGrowthTick));
+  state.lastGrowthTick = now;
+  if (state.level >= 3) { state.growthMinutes = 0; saveGame(); return; }
+
+  const elapsedMinutes = elapsed / 60000;
+  state.careMinutes += elapsedMinutes;
+  while (state.careMinutes >= 5) {
+    state.careMinutes -= 5;
+    state.hunger = Math.max(0, state.hunger - 2);
+  }
+  if (Math.floor((now / 60000) % 4) === 0) state.happy = Math.max(0, state.happy - 1);
+  if (Math.floor((now / 60000) % 6) === 0) state.clean = Math.max(0, state.clean - 1);
+  if (state.hunger < 20 || state.clean < 20) state.health = Math.max(0, state.health - 1);
+
+  const wellCaredFor = !state.isSick && state.hunger >= 65 && state.happy >= 65 && state.clean >= 65 && state.health >= 65;
+  if (wellCaredFor) {
+    state.growthMinutes += elapsedMinutes;
+    if (state.growthMinutes >= 10) {
+      state.growthMinutes -= 10;
+      setPetLevel(state.level + 1);
+      state.exp = 0;
+      state.coins = Math.min(1000000, state.coins + 50);
+      state.happy = Math.min(100, state.happy + 10);
+      spawnParticles(280, 195, '🌟', 10);
+    }
+  }
+  updatePhoneUI();
+  saveGame();
+}
+setInterval(growthTick, 60000);
+
+function updatePhoneUI() {
+  const cfg = LEVEL_CONFIG[state.level];
+
+  const tEl = document.getElementById('watchTitleText');
+  if (tEl) tEl.textContent = state.petName;
+  const topCoin = document.getElementById('topCoinBadge');
+  if (topCoin) topCoin.textContent = `${state.coins}G`;
+
+  const lEl = document.getElementById('hudLevelPill');
+  if (lEl) lEl.textContent = `${cfg.shortTitle} · 飽食 ${state.hunger}%`;
+  const levelBadge = document.getElementById('phoneLevelBadge');
+  if (levelBadge) levelBadge.textContent = `🪙 ${state.coins} G`;
+
+  const stageBadge = document.getElementById('stageNameBadge');
+  if (stageBadge) stageBadge.textContent = cfg.stageTitle;
+  const stageDesc = document.getElementById('stageFeatureDesc');
+  if (stageDesc) stageDesc.textContent = cfg.desc;
+
+  [1, 2, 3].forEach(lv => {
+    const b = document.getElementById('btnLv' + lv);
+    if (b) b.classList.toggle('active-act', state.level === lv);
+  });
+
+  const idEl = document.getElementById('phonePetIdentity');
+  if (idEl) idEl.textContent = `🫧 ${state.petName} (${state.gender})`;
+
+  const hEl = document.getElementById('lblHunger');
+  if (hEl) hEl.textContent = state.hunger + '%';
+  const bhEl = document.getElementById('barHunger');
+  if (bhEl) bhEl.style.width = state.hunger + '%';
+
+  const hpEl = document.getElementById('lblHappy');
+  if (hpEl) hpEl.textContent = state.happy + '%';
+  const bhpEl = document.getElementById('barHappy');
+  if (bhpEl) bhpEl.style.width = state.happy + '%';
+
+  const clEl = document.getElementById('lblClean');
+  if (clEl) clEl.textContent = state.clean + '%';
+  const bclEl = document.getElementById('barClean');
+  if (bclEl) bclEl.style.width = state.clean + '%';
+
+  const heEl = document.getElementById('lblHealth');
+  if (heEl) heEl.textContent = state.health + '%';
+  const bheEl = document.getElementById('barHealth');
+  if (bheEl) bheEl.style.width = state.health + '%';
+
+  const actInfo = DAILY_ACTIVITIES[state.activity] || DAILY_ACTIVITIES.none;
+  const badgeEl = document.getElementById('currentActivityBadge');
+  if (badgeEl) badgeEl.textContent = actInfo.label;
+  if (state.mode === 'home') {
+    const hintEl = document.getElementById('hudModeHint');
+    if (hintEl) hintEl.textContent = actInfo.hint;
+  }
+
+  const noneBtn = document.getElementById('phoneAct-none');
+  if (noneBtn) noneBtn.classList.toggle('active-act', state.activity === 'none');
+
+  renderDynamicStageControls();
+  renderShop();
+  saveGame();
+}
+
+// 支援 Apple Watch 數碼錶冠滾輪切換分頁
+const modeOrder = ['home', 'feed', 'bath', 'heal', 'game'];
+window.addEventListener('wheel', (e) => {
+  if (!document.getElementById('diaryDrawer').classList.contains('hidden')) return;
+  if (!document.getElementById('wizardOverlay').classList.contains('hidden')) return;
+  const idx = modeOrder.indexOf(state.mode);
+  const dir = e.deltaY > 0 ? 1 : -1;
+  const nextIdx = (idx + dir + modeOrder.length) % modeOrder.length;
+  switchMode(modeOrder[nextIdx]);
+}, { passive: true });
+
+// 安全事件派發
+const secureClickHandlers = {
+  "open_diary": () => (toggleDiaryDrawer(true)),
+  "close_diary": () => (toggleDiaryDrawer(false)),
+  "a0": () => (triggerExpressionDemo()),
+  "a1": () => (triggerDirty()),
+  "a2": () => (triggerSick()),
+  "a3": () => (resetWizard()),
+  "a4": () => (cycleWizChar(-1)),
+  "a5": () => (cycleWizChar(1)),
+  "a6": () => (goWizStep(2)),
+  "a7": () => (selectGender('♂️ 男生', 'genBoy')),
+  "a8": () => (selectGender('♀️ 女生', 'genGirl')),
+  "a9": () => (selectGender('✨ 百變無性別', 'genFree')),
+  "a10": () => (goWizStep(1)),
+  "a11": () => (goWizStep(3)),
+  "a12": () => (setPresetName('百變小粉')),
+  "a13": () => (setPresetName('麻糬紫')),
+  "a14": () => (setPresetName('蘇打藍')),
+  "a15": () => (setPresetName('軟綿綿')),
+  "a16": () => (goWizStep(2)),
+  "a17": () => (finishWizard()),
+  "a21": () => (switchMode('home')),
+  "a22": () => (switchMode('feed')),
+  "a23": () => (switchMode('bath')),
+  "a24": () => (switchMode('heal')),
+  "a25": () => (switchMode('game')),
+  "a27": () => (addSteps(500)),
+  "a28": () => (addSteps(2000)),
+  "a29": () => (quickSwitchChar(0)),
+  "a30": () => (quickSwitchChar(1)),
+  "a31": () => (quickSwitchChar(2)),
+  "a38": () => (randomizeAppOpenActivity(false)),
+  "act_none": () => { setDailyActivity('none'); toggleDiaryDrawer(false); },
+  "lv1": () => (setPetLevel(1)),
+  "lv2": () => (setPetLevel(2)),
+  "lv3": () => (setPetLevel(3))
+};
+document.addEventListener("click", (event) => {
+  const target = event.target instanceof Element ? event.target.closest("[data-secure-click]") : null;
+  if (!target) return;
+  const action = target.getAttribute("data-secure-click");
+  const handler = secureClickHandlers[action];
+  if (typeof handler === "function") {
+    try { handler(); } catch (error) { console.error("遊戲操作執行失敗", error); }
+  }
+});
+
+// 初始化啟動
+randomizeAppOpenActivity(true);
+requestAnimationFrame(renderLoop);
+</script>
+</body>
+</html>
