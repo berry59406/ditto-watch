@@ -28,28 +28,24 @@
   }
 
   /* 使用 position: fixed + inset: 0 自動貼合扣除 Apple Watch 頂部網址列後的真實剩餘高度 */
-  html, body {
+ html, body {
     margin: 0;
     padding: 0;
     width: 100%;
-    height: 100%;
-    position: fixed;
-    inset: 0;
-    overflow: hidden;
-    overscroll-behavior: none;
+    min-height: calc(100% + 2px); /* 故意多出 2px 讓系統允許捲動收起網址列 */
+    overflow-x: hidden;
+    overflow-y: auto;
     background: var(--bg-cream);
     font-family: 'Nunito', 'Noto Sans TC', -apple-system, BlinkMacSystemFont, sans-serif;
     color: var(--blob-dark);
-    display: flex;
-    justify-content: center;
-    align-items: center;
   }
 
   .watch-app-viewport {
-    width: 100%;
-    height: 100%;
+    width: 100vw;
+    height: 100dvh;
     background: var(--bg-cream);
-    position: relative;
+    position: sticky;
+    top: 0;
     overflow: hidden;
     display: flex;
     flex-direction: column;
@@ -80,13 +76,13 @@
   }
 
   /* 取消強制 100% 拉伸變形，改用 object-fit: contain 保持軟泥完美正圓 Q 彈比例 */
-  #petCanvas {
+#petCanvas {
     width: 100%;
     height: 100%;
     object-fit: contain;
     display: block;
     cursor: grab;
-    touch-action: none;
+    touch-action: pan-y; /* 允許觸發系統收起網址列 */
   }
 
   #petCanvas:active {
@@ -2636,6 +2632,13 @@ document.addEventListener("click", (event) => {
 });
 
 randomizeAppOpenActivity(true);
+function hideWatchAddressBar() {
+  setTimeout(() => {
+    window.scrollTo(0, 1);
+  }, 150);
+}
+window.addEventListener('load', hideWatchAddressBar);
+window.addEventListener('pointerdown', hideWatchAddressBar, { once: true });
 requestAnimationFrame(renderLoop);
 </script>
 </body>
