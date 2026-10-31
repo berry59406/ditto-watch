@@ -8,7 +8,7 @@
 <meta name="apple-mobile-web-app-title" content="百變軟泥">
 <meta name="theme-color" content="#FFF9FC">
 <link rel="manifest" href="./manifest.json">
-<title>軟綿綿百變軟泥 — Apple Watch PWA</title>
+<title>軟綿綿百變軟泥 — Apple Watch 滿版專用版</title>
 <style>
   :root {
     --bg-cream: #FFF9FC;
@@ -27,14 +27,17 @@
     -webkit-tap-highlight-color: transparent;
   }
 
+  /* 使用 position: fixed + inset: 0 自動貼合扣除 Apple Watch 頂部網址列後的真實剩餘高度 */
   html, body {
     margin: 0;
     padding: 0;
     width: 100%;
     height: 100%;
+    position: fixed;
+    inset: 0;
     overflow: hidden;
     overscroll-behavior: none;
-    background: #141118;
+    background: var(--bg-cream);
     font-family: 'Nunito', 'Noto Sans TC', -apple-system, BlinkMacSystemFont, sans-serif;
     color: var(--blob-dark);
     display: flex;
@@ -42,10 +45,9 @@
     align-items: center;
   }
 
-  /* ================= APPLE WATCH 核心視口容器 ================= */
   .watch-app-viewport {
-    width: 100vw;
-    height: 100dvh;
+    width: 100%;
+    height: 100%;
     background: var(--bg-cream);
     position: relative;
     overflow: hidden;
@@ -53,39 +55,66 @@
     flex-direction: column;
   }
 
+  /* 電腦大螢幕預覽時維持手錶外框 */
   @media (min-width: 420px) and (min-height: 460px) {
+    html, body { background: #141118; }
     .watch-app-viewport {
       width: 320px;
-      height: 390px;
-      border-radius: 54px;
+      height: 360px;
+      border-radius: 48px;
       border: 4px solid #3A3442;
       box-shadow: 0 18px 48px rgba(0, 0, 0, 0.55);
     }
   }
 
-  /* 頂部狀態列 */
-  .watch-statusbar {
-    height: 32px;
-    padding: 4px 12px 0;
+  /* 手錶主互動畫布區：直接吃滿整個上方空間（移除原本重複佔位的 watch-statusbar） */
+  .watch-stage {
+    flex: 1;
+    width: 100%;
+    height: 100%;
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    min-height: 0;
+  }
+
+  /* 取消強制 100% 拉伸變形，改用 object-fit: contain 保持軟泥完美正圓 Q 彈比例 */
+  #petCanvas {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    display: block;
+    cursor: grab;
+    touch-action: none;
+  }
+
+  #petCanvas:active {
+    cursor: grabbing;
+  }
+
+  /* 頂部懸浮資訊列：把「日記/商店按鈕」與「等級飽食度」合併在同一排浮於畫布上方，省下 32px 高度！ */
+  .stage-hud-top {
+    position: absolute;
+    top: 4px;
+    left: 6px;
+    right: 6px;
     display: flex;
     justify-content: space-between;
     align-items: center;
-    font-size: 11px;
-    font-weight: 900;
-    color: var(--blob-dark);
-    z-index: 10;
-    background: rgba(255, 249, 252, 0.94);
-    border-bottom: 1.5px solid rgba(74, 53, 91, 0.12);
-    flex-shrink: 0;
+    z-index: 8;
+    gap: 4px;
+    pointer-events: none;
   }
 
   .diary-open-btn {
+    pointer-events: auto;
     background: var(--blob-pink);
     color: var(--blob-dark);
-    border: 2px solid var(--blob-dark);
+    border: 1.8px solid var(--blob-dark);
     border-radius: 99px;
-    padding: 2px 8px;
-    font-size: 10px;
+    padding: 2px 7px;
+    font-size: 9.5px;
     font-weight: 900;
     cursor: pointer;
     box-shadow: 1px 1.5px 0 var(--blob-dark);
@@ -100,57 +129,17 @@
     box-shadow: 0 0 0 var(--blob-dark);
   }
 
-  .clock-wrap {
-    display: flex;
-    align-items: center;
-    gap: 4px;
-  }
-
   .pwa-dot {
-    width: 7px;
-    height: 7px;
+    width: 6px;
+    height: 6px;
     border-radius: 50%;
     background: #4ADE80;
     border: 1px solid var(--blob-dark);
+    display: inline-block;
   }
 
   .pwa-dot.offline {
     background: #F59E0B;
-  }
-
-  /* 手錶主互動畫布區 */
-  .watch-stage {
-    flex: 1;
-    position: relative;
-    display: flex;
-    flex-direction: column;
-    overflow: hidden;
-    min-height: 0;
-  }
-
-  #petCanvas {
-    width: 100%;
-    height: 100%;
-    display: block;
-    cursor: grab;
-    touch-action: none;
-  }
-
-  #petCanvas:active {
-    cursor: grabbing;
-  }
-
-  /* 上層漂浮提示膠囊 */
-  .stage-hud-top {
-    position: absolute;
-    top: 6px;
-    left: 8px;
-    right: 8px;
-    display: flex;
-    justify-content: space-between;
-    pointer-events: none;
-    z-index: 4;
-    gap: 4px;
   }
 
   .mini-pill {
@@ -162,16 +151,14 @@
     font-weight: 900;
     box-shadow: 1px 1.5px 0 rgba(74, 53, 91, 0.16);
     white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
   }
 
   /* 軟泥窩底部：日常小活動快速切換列 */
   .activity-picker-bar {
     position: absolute;
-    bottom: 5px;
-    left: 4px;
-    right: 4px;
+    bottom: 4px;
+    left: 3px;
+    right: 3px;
     display: flex;
     justify-content: center;
     flex-wrap: wrap;
@@ -185,29 +172,28 @@
 
   .act-pill {
     background: rgba(255, 255, 255, 0.94);
-    border: 1.8px solid var(--blob-dark);
-    border-radius: 9px;
+    border: 1.6px solid var(--blob-dark);
+    border-radius: 8px;
     padding: 2px 5px;
-    font-size: 9.5px;
+    font-size: 9px;
     font-weight: 900;
     cursor: pointer;
     box-shadow: 1px 1.5px 0 var(--blob-dark);
     color: var(--blob-dark);
     font-family: inherit;
-    transition: all 0.12s;
   }
 
   .act-pill.active {
     background: var(--blob-pink);
-    transform: translateY(-1.5px);
+    transform: translateY(-1px);
   }
 
   /* 餵食模式底部食物選擇器 */
   .food-picker-bar {
     position: absolute;
-    bottom: 5px;
-    left: 4px;
-    right: 4px;
+    bottom: 4px;
+    left: 3px;
+    right: 3px;
     display: flex;
     justify-content: center;
     flex-wrap: wrap;
@@ -221,10 +207,10 @@
 
   .food-slot {
     background: #FFF;
-    border: 1.8px solid var(--blob-dark);
-    border-radius: 9px;
+    border: 1.6px solid var(--blob-dark);
+    border-radius: 8px;
     padding: 2px 5px;
-    font-size: 12px;
+    font-size: 11px;
     cursor: pointer;
     box-shadow: 1px 1.5px 0 var(--blob-dark);
     display: flex;
@@ -234,7 +220,7 @@
 
   .food-slot.selected {
     background: var(--blob-pink);
-    transform: translateY(-1.5px);
+    transform: translateY(-1px);
   }
 
   .food-slot span {
@@ -242,15 +228,15 @@
     font-weight: 900;
   }
 
-  /* 手錶底部 Dock 導覽列 (5 個核心功能) */
+  /* 手錶底部 Dock 導覽列 (精簡高度為 40px，釋放更多空間給軟泥) */
   .watch-dock {
-    height: 48px;
+    height: 40px;
     background: #F8EEFC;
     border-top: 2px solid var(--blob-dark);
     display: flex;
     justify-content: space-around;
     align-items: center;
-    padding: 0 4px 2px;
+    padding: 0 3px 1px;
     z-index: 6;
     flex-shrink: 0;
   }
@@ -262,33 +248,32 @@
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    gap: 1px;
-    padding: 3px 2px;
+    gap: 0px;
+    padding: 2px 1px;
     min-width: 0;
     flex: 1;
-    border-radius: 10px;
+    border-radius: 9px;
     cursor: pointer;
     font-family: inherit;
-    transition: all 0.12s;
     color: #877199;
   }
 
   .dock-btn .icon {
-    font-size: 15px;
-    line-height: 1;
+    font-size: 13.5px;
+    line-height: 1.05;
   }
 
   .dock-btn .lbl {
-    font-size: 8.5px;
+    font-size: 8px;
     font-weight: 900;
   }
 
   .dock-btn.active {
     background: var(--blob-pink);
     color: var(--blob-dark);
-    border: 1.8px solid var(--blob-dark);
-    box-shadow: 1px 1.5px 0px var(--blob-dark);
-    transform: translateY(-1.5px);
+    border: 1.6px solid var(--blob-dark);
+    box-shadow: 1px 1px 0px var(--blob-dark);
+    transform: translateY(-1px);
   }
 
   /* ================= 內建抽屜面板：飼育日記 & 商店 ================= */
@@ -308,7 +293,7 @@
   }
 
   .drawer-header {
-    padding: 6px 12px;
+    padding: 5px 10px;
     background: #F6ECFA;
     border-bottom: 2px solid var(--blob-dark);
     display: flex;
@@ -319,7 +304,7 @@
 
   .drawer-header h2 {
     margin: 0;
-    font-size: 12px;
+    font-size: 11.5px;
     font-weight: 900;
   }
 
@@ -327,23 +312,23 @@
     flex: 1;
     overflow-y: auto;
     -webkit-overflow-scrolling: touch;
-    padding: 8px 10px 18px;
+    padding: 6px 8px 16px;
     display: flex;
     flex-direction: column;
-    gap: 8px;
+    gap: 7px;
   }
 
   .dino-card {
     background: #FFF;
-    border: 2px solid var(--blob-dark);
-    border-radius: 14px;
-    padding: 8px 10px;
-    box-shadow: 2px 3px 0px var(--blob-dark);
+    border: 1.8px solid var(--blob-dark);
+    border-radius: 12px;
+    padding: 7px 8px;
+    box-shadow: 1.5px 2.5px 0px var(--blob-dark);
   }
 
   .dino-card h3 {
-    margin: 0 0 5px;
-    font-size: 11px;
+    margin: 0 0 4px;
+    font-size: 10.5px;
     font-weight: 900;
     display: flex;
     align-items: center;
@@ -353,19 +338,19 @@
   .crayon-btn {
     background: #FFF;
     color: var(--blob-dark);
-    border: 1.8px solid var(--blob-dark);
-    box-shadow: 1px 2px 0px var(--blob-dark);
-    border-radius: 10px;
-    padding: 4px 8px;
+    border: 1.6px solid var(--blob-dark);
+    box-shadow: 1px 1.5px 0px var(--blob-dark);
+    border-radius: 8px;
+    padding: 3px 6px;
     font-weight: 800;
-    font-size: 10.5px;
+    font-size: 10px;
     cursor: pointer;
     font-family: inherit;
   }
 
   .crayon-btn:active:not(:disabled) {
     transform: translate(1px, 1px);
-    box-shadow: 0px 1px 0px var(--blob-dark);
+    box-shadow: 0px 0px 0px var(--blob-dark);
   }
 
   .crayon-btn:disabled {
@@ -381,18 +366,18 @@
   .stat-bars {
     display: grid;
     grid-template-columns: 1fr 1fr;
-    gap: 5px;
+    gap: 4px;
   }
 
   .stat-item {
     background: #FDF9FC;
     border: 1.5px solid var(--blob-dark);
-    border-radius: 9px;
-    padding: 4px 6px;
+    border-radius: 8px;
+    padding: 3px 5px;
   }
 
   .stat-label {
-    font-size: 9.5px;
+    font-size: 9px;
     font-weight: 800;
     display: flex;
     justify-content: space-between;
@@ -400,7 +385,7 @@
   }
 
   .bar-bg {
-    height: 6px;
+    height: 5px;
     background: #EDE1F3;
     border-radius: 99px;
     overflow: hidden;
@@ -415,19 +400,19 @@
   .activity-grid {
     display: grid;
     grid-template-columns: 1fr 1fr;
-    gap: 5px;
+    gap: 4px;
   }
 
   .shop-grid {
     display: grid;
     grid-template-columns: 1fr 1fr;
-    gap: 6px;
+    gap: 5px;
   }
 
   .shop-item {
-    border: 1.8px solid var(--blob-dark);
-    border-radius: 11px;
-    padding: 6px;
+    border: 1.6px solid var(--blob-dark);
+    border-radius: 10px;
+    padding: 5px;
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -437,24 +422,24 @@
   }
 
   .shop-item .hat-title {
-    font-size: 10px;
+    font-size: 9.5px;
     font-weight: 900;
   }
 
   .shop-item .hat-sub {
-    font-size: 8.5px;
+    font-size: 8px;
     font-weight: 800;
     color: #7B5E8E;
   }
 
   .SyncToast {
-    font-size: 9.5px;
+    font-size: 9px;
     font-weight: 800;
     color: #553575;
     background: #F3E5F8;
     border: 1.5px solid #6E4794;
-    padding: 4px 6px;
-    border-radius: 8px;
+    padding: 3px 5px;
+    border-radius: 7px;
     text-align: center;
   }
 
@@ -467,7 +452,7 @@
     display: flex;
     flex-direction: column;
     justify-content: space-between;
-    padding: 14px 12px 12px;
+    padding: 10px 10px 10px;
     text-align: center;
   }
 
@@ -478,18 +463,18 @@
   .wiz-step-badge {
     display: inline-block;
     background: var(--blob-pink);
-    border: 1.8px solid var(--blob-dark);
-    padding: 2px 8px;
+    border: 1.6px solid var(--blob-dark);
+    padding: 1px 7px;
     border-radius: 99px;
-    font-size: 9.5px;
+    font-size: 9px;
     font-weight: 900;
     margin: 0 auto 2px;
   }
 
   .wiz-title {
-    font-size: 13px;
+    font-size: 12px;
     font-weight: 900;
-    margin: 0 0 4px;
+    margin: 0 0 2px;
   }
 
   .char-carousel {
@@ -499,95 +484,95 @@
   }
 
   .carousel-arrow {
-    width: 26px;
-    height: 26px;
+    width: 24px;
+    height: 24px;
     border-radius: 50%;
-    border: 2px solid var(--blob-dark);
+    border: 1.8px solid var(--blob-dark);
     background: #FFF;
     font-weight: 900;
     cursor: pointer;
-    box-shadow: 1px 1.5px 0 var(--blob-dark);
+    box-shadow: 1px 1px 0 var(--blob-dark);
     color: var(--blob-dark);
   }
 
   #wizardPreviewCanvas {
-    width: 120px;
-    height: 110px;
+    width: 110px;
+    height: 100px;
   }
 
   .char-desc-box {
     background: #F6ECFA;
-    border: 1.8px solid var(--blob-dark);
-    border-radius: 11px;
-    padding: 5px 8px;
-    margin-bottom: 5px;
+    border: 1.6px solid var(--blob-dark);
+    border-radius: 10px;
+    padding: 4px 6px;
+    margin-bottom: 4px;
   }
 
   .char-desc-box h4 {
     margin: 0;
-    font-size: 12px;
+    font-size: 11px;
     font-weight: 900;
   }
 
   .char-desc-box p {
-    margin: 2px 0 0;
-    font-size: 9.5px;
+    margin: 1px 0 0;
+    font-size: 9px;
     color: #6B537C;
     font-weight: 700;
   }
 
   .gender-grid {
     display: flex;
-    gap: 6px;
+    gap: 5px;
     justify-content: center;
-    margin: 12px 0;
+    margin: 8px 0;
   }
 
   .gender-card {
     flex: 1;
-    padding: 8px 4px;
-    border: 2px solid var(--blob-dark);
-    border-radius: 12px;
+    padding: 6px 3px;
+    border: 1.8px solid var(--blob-dark);
+    border-radius: 10px;
     background: #FFF;
     cursor: pointer;
     font-weight: 900;
-    font-size: 10.5px;
+    font-size: 10px;
   }
 
   .gender-card.selected {
     background: var(--blob-pink);
-    box-shadow: 1.5px 2px 0 var(--blob-dark);
+    box-shadow: 1px 1.5px 0 var(--blob-dark);
   }
 
   .name-input {
     width: 100%;
-    padding: 6px 8px;
-    border: 2px solid var(--blob-dark);
-    border-radius: 10px;
-    font-size: 12px;
+    padding: 5px 6px;
+    border: 1.8px solid var(--blob-dark);
+    border-radius: 8px;
+    font-size: 11px;
     font-weight: 900;
     text-align: center;
     font-family: inherit;
     background: #FFF;
-    margin-bottom: 6px;
+    margin-bottom: 5px;
     color: var(--blob-dark);
   }
 
   .preset-chips {
     display: flex;
     flex-wrap: wrap;
-    gap: 4px;
+    gap: 3px;
     justify-content: center;
-    margin-bottom: 8px;
+    margin-bottom: 6px;
   }
 
   .chip {
-    font-size: 9.5px;
+    font-size: 9px;
     font-weight: 800;
     background: #F3E5F8;
-    border: 1.5px solid var(--blob-dark);
+    border: 1.4px solid var(--blob-dark);
     border-radius: 99px;
-    padding: 2px 7px;
+    padding: 2px 6px;
     cursor: pointer;
   }
 </style>
@@ -595,18 +580,6 @@
 <body>
 
 <div class="watch-app-viewport">
-
-  <!-- 頂部狀態列：左上角可打開「飼育日記/商店/等級切換」抽屜 -->
-  <div class="watch-statusbar">
-    <button class="diary-open-btn" data-secure-click="open_diary">
-      📱 日記/商店 <span id="topCoinBadge">300G</span>
-    </button>
-    <span id="watchTitleText">百變小粉</span>
-    <div class="clock-wrap">
-      <span class="pwa-dot" id="pwaStatusDot" title="PWA 離線快取已就緒"></span>
-      <span id="watchClock">10:09</span>
-    </div>
-  </div>
 
   <!-- 3 步驟創角精靈 -->
   <div id="wizardOverlay" class="wizard-overlay hidden">
@@ -622,7 +595,7 @@
         <h4 id="wizCharName">櫻花粉百變軟泥</h4>
         <p id="wizCharBio">溫柔愛笑的粉紅軟泥，戳戳牠會露出害羞腮紅斜線與大笑嘴！</p>
       </div>
-      <button class="crayon-btn accent" style="width:100%;padding:6px;" data-secure-click="a6">下一步：選擇屬性 ➔</button>
+      <button class="crayon-btn accent" style="width:100%;padding:5px;" data-secure-click="a6">下一步：選擇屬性 ➔</button>
     </div>
 
     <div id="wizStep2" style="display:none;">
@@ -633,7 +606,7 @@
         <div class="gender-card" id="genGirl" data-secure-click="a8">👧<br>女生</div>
         <div class="gender-card" id="genFree" data-secure-click="a9">🫧<br>百變系</div>
       </div>
-      <div style="display:flex;gap:6px;">
+      <div style="display:flex;gap:5px;">
         <button class="crayon-btn" style="flex:1;" data-secure-click="a10">⬅ 返回</button>
         <button class="crayon-btn accent" style="flex:2;" data-secure-click="a11">下一步：命名 ➔</button>
       </div>
@@ -649,7 +622,7 @@
         <span class="chip" data-secure-click="a14">蘇打藍</span>
         <span class="chip" data-secure-click="a15">軟綿綿</span>
       </div>
-      <div style="display:flex;gap:6px;">
+      <div style="display:flex;gap:5px;">
         <button class="crayon-btn" style="flex:1;" data-secure-click="a16">⬅ 返回</button>
         <button class="crayon-btn accent" style="flex:2;" data-secure-click="a17">🫧 軟綿綿誕生！</button>
       </div>
@@ -659,12 +632,12 @@
   <!-- 手錶內建抽屜面板：飼育日記、等級切換、配件店、測試按鈕 -->
   <div id="diaryDrawer" class="drawer-overlay hidden">
     <div class="drawer-header">
-      <h2>📱 軟泥飼育日記 · 商店</h2>
-      <button class="crayon-btn accent" data-secure-click="close_diary">✖ 返回手錶</button>
+      <h2>📱 軟泥日記 · 商店</h2>
+      <button class="crayon-btn accent" data-secure-click="close_diary">✖ 返回</button>
     </div>
     <div class="drawer-body">
       <div class="SyncToast" id="syncToast">
-        ✨ PWA 離線快取已啟用：無網路也能順暢打開軟泥！
+        ✨ 已針對 Apple Watch 扣除網址列最佳化比例！
       </div>
 
       <!-- 等級切換卡 -->
@@ -673,7 +646,7 @@
           <span>🌟 等級切換 (Lv.1~Lv.3)</span>
           <span style="color:var(--blob-purple);" id="stageNameBadge">Lv.1 初階軟泥</span>
         </h3>
-        <p id="stageFeatureDesc" style="margin:0 0 5px;font-size:9.5px;color:#6B537C;font-weight:800;">
+        <p id="stageFeatureDesc" style="margin:0 0 4px;font-size:9px;color:#6B537C;font-weight:800;">
           🔓 目前開放：3 種食物｜3 種日常動作｜3 種配件選擇
         </p>
         <div style="display:flex;gap:4px;">
@@ -690,7 +663,7 @@
           <span style="color:var(--blob-purple);" id="currentActivityBadge">📖 專心看書中</span>
         </h3>
         <div class="activity-grid" id="phoneActivityGrid"></div>
-        <div style="display:flex;gap:4px;margin-top:5px;">
+        <div style="display:flex;gap:4px;margin-top:4px;">
           <button class="crayon-btn" style="flex:1;" id="phoneAct-none" data-secure-click="act_none">🫧 純發呆</button>
           <button class="crayon-btn accent" style="flex:1;" data-secure-click="a38">🎲 隨機日常</button>
         </div>
@@ -729,7 +702,7 @@
             <div class="bar-bg"><div class="bar-fill" id="barHealth" style="width:100%;background:#A5D6A7;"></div></div>
           </div>
         </div>
-        <div style="display:flex;gap:4px;margin-top:6px;">
+        <div style="display:flex;gap:4px;margin-top:5px;">
           <button class="crayon-btn" style="flex:1;" data-secure-click="a27">🏃+500步 (+25G)</button>
           <button class="crayon-btn accent" style="flex:1;" data-secure-click="a28">🏃+2000步 (+100G)</button>
         </div>
@@ -738,7 +711,7 @@
       <!-- 測試工具與換色 -->
       <div class="dino-card">
         <h3><span>🎨 軟泥色系 & 互動測試</span></h3>
-        <div style="display:flex;gap:4px;margin-bottom:5px;">
+        <div style="display:flex;gap:4px;margin-bottom:4px;">
           <button class="crayon-btn" style="flex:1;background:#FDE4EE;" data-secure-click="a29">🌸小粉</button>
           <button class="crayon-btn" style="flex:1;background:#EFE3FA;" data-secure-click="a30">🍇麻糬紫</button>
           <button class="crayon-btn" style="flex:1;background:#E1F4FC;" data-secure-click="a31">💎蘇打藍</button>
@@ -753,14 +726,16 @@
     </div>
   </div>
 
-  <!-- 手錶主畫布舞台 -->
+  <!-- 手錶主畫布舞台 (高度改為 440，完美適配扣除系統網址列後的寬高比) -->
   <div class="watch-stage">
     <div class="stage-hud-top">
+      <button class="diary-open-btn" data-secure-click="open_diary">
+        <span class="pwa-dot" id="pwaStatusDot"></span>📱日記 <span id="topCoinBadge">300G</span>
+      </button>
       <div class="mini-pill" id="hudLevelPill">Lv.1/3 · 飽食 85%</div>
-      <div class="mini-pill" id="hudModeHint">👋 戳戳軟泥互動</div>
     </div>
 
-    <canvas id="petCanvas" width="560" height="520"></canvas>
+    <canvas id="petCanvas" width="560" height="440"></canvas>
 
     <!-- 軟泥窩專屬：底部日常小活動快速切換列 -->
     <div id="activityPickerBar" class="activity-picker-bar"></div>
@@ -795,26 +770,21 @@
 // 0. PWA 離線引擎註冊 & 動態生成 Apple 桌面圖示
 // ============================================================================
 (function initPWA() {
-  // 1. 註冊 Service Worker
   if ('serviceWorker' in navigator) {
     window.addEventListener('load', () => {
       navigator.serviceWorker.register('./sw.js').catch(() => {});
     });
   }
 
-  // 2. 監聽連線/離線狀態，更新右上角狀態燈號
   const dot = document.getElementById('pwaStatusDot');
   function syncOnlineStatus() {
     if (!dot) return;
-    const isOnline = navigator.onLine;
-    dot.classList.toggle('offline', !isOnline);
-    dot.title = isOnline ? '已連線 (PWA 離線快取已就緒)' : '目前為離線模式 (由本地快取執行中)';
+    dot.classList.toggle('offline', !navigator.onLine);
   }
   window.addEventListener('online', syncOnlineStatus);
   window.addEventListener('offline', syncOnlineStatus);
   syncOnlineStatus();
 
-  // 3. 自動以 Canvas 繪製 180x180 的百變軟泥圖示給 iOS apple-touch-icon
   try {
     const iconCanvas = document.createElement('canvas');
     iconCanvas.width = 180;
@@ -910,7 +880,6 @@ const DAILY_ACTIVITIES = {
     shortBtn: '🫧發呆',
     phoneBtn: '🫧 純發呆玩耍',
     label: '🫧 自由玩耍中',
-    hint: '👋 點擊軟泥變換鬼臉',
     bubble: '軟綿綿～戳戳我玩嘛！',
     toast: '🫧 小軟泥現在正在軟泥窩裡自由玩耍！'
   },
@@ -920,7 +889,6 @@ const DAILY_ACTIVITIES = {
     shortBtn: '😴睡覺',
     phoneBtn: '😴 呼呼睡覺',
     label: '😴 呼呼大睡中',
-    hint: '😴 軟泥正在香甜午睡',
     bubble: 'Zzz... 夢到吃大草莓凍... 🍓',
     toast: '😴 打開 App 發現：小軟泥戴著睡帽正在呼呼大睡呢！'
   },
@@ -930,7 +898,6 @@ const DAILY_ACTIVITIES = {
     shortBtn: '📖看書',
     phoneBtn: '📖 專心看書',
     label: '📖 專心看書中',
-    hint: '📖 軟泥正在看書',
     bubble: '《百變怪軟泥百科》好有趣喔！💡',
     toast: '📖 打開 App 發現：小軟泥正戴著眼鏡專心看書呢！(+5 快樂)'
   },
@@ -940,7 +907,6 @@ const DAILY_ACTIVITIES = {
     shortBtn: '🍵喝茶',
     phoneBtn: '🍵 悠哉喝茶',
     label: '🍵 悠哉喝茶中',
-    hint: '🍵 軟泥正在品嚐熱茶',
     bubble: '呼～熱呼呼的抹茶配點心最棒了🍵',
     toast: '🍵 打開 App 發現：小軟泥正捧著熱抹茶悠哉喝下午茶！(+5 飽食)'
   },
@@ -950,7 +916,6 @@ const DAILY_ACTIVITIES = {
     shortBtn: '🏋️運動',
     phoneBtn: '🏋️ 活力運動',
     label: '🏋️ 活力運動中',
-    hint: '🏋️ 軟泥正在舉啞鈴',
     bubble: '嘿咻！一二、一二！練成Q彈好身材💦',
     toast: '🏋️ 打開 App 發現：小軟泥正綁著頭帶賣力舉啞鈴運動！(+5 健康)'
   },
@@ -960,7 +925,6 @@ const DAILY_ACTIVITIES = {
     shortBtn: '🎨畫畫',
     phoneBtn: '🎨 創意畫畫',
     label: '🎨 靈感畫畫中',
-    hint: '🎨 軟泥正在拿畫筆作畫',
     bubble: '唰唰～把主人畫得超可愛！🎨✨',
     toast: '🎨 打開 App 發現：小軟泥正拿著調色盤與畫筆開心作畫！(+6 快樂)'
   }
@@ -976,9 +940,9 @@ const SHOP_HATS = [
 ];
 
 const LEVEL_CONFIG = {
-  1: { stageTitle: 'Lv.1 初階軟泥', shortTitle: 'Lv.1/3', scale: 1.08, count: 3, desc: '🔓 Lv.1 開放：3 種食物｜3 種日常動作｜3 種配件選擇' },
-  2: { stageTitle: 'Lv.2 進階軟泥', shortTitle: 'Lv.2/3', scale: 1.15, count: 4, desc: '🔓 Lv.2 開放：4 種食物｜4 種日常動作｜4 種配件 (含雲朵翅膀＋蝴蝶結領巾)' },
-  3: { stageTitle: 'Lv.3 完全體軟泥', shortTitle: 'Lv.3/3', scale: 1.22, count: 5, desc: '🔓 Lv.3 全開：5 種食物｜5 種日常動作｜5 種配件 (含皇家披風＋黃金寶石皇冠)' }
+  1: { stageTitle: 'Lv.1 初階軟泥', shortTitle: 'Lv.1/3', scale: 1.04, count: 3, desc: '🔓 Lv.1 開放：3 種食物｜3 種日常動作｜3 種配件選擇' },
+  2: { stageTitle: 'Lv.2 進階軟泥', shortTitle: 'Lv.2/3', scale: 1.11, count: 4, desc: '🔓 Lv.2 開放：4 種食物｜4 種日常動作｜4 種配件 (含雲朵翅膀＋蝴蝶結領巾)' },
+  3: { stageTitle: 'Lv.3 完全體軟泥', shortTitle: 'Lv.3/3', scale: 1.18, count: 5, desc: '🔓 Lv.3 全開：5 種食物｜5 種日常動作｜5 種配件 (含皇家披風＋黃金寶石皇冠)' }
 };
 
 const IDLE_FACES = ['line_smile', 'big_laugh', 'tongue_out', 'blush_smile', 'surprised_o', 'sleepy_smile'];
@@ -1010,7 +974,7 @@ const state = {
   chewTimer: 0,
   happyJumpTimer: 0,
   rinseTimer: 0,
-  pointer: { down: false, x: 280, y: 420, startX: 280, startY: 420, lastX: 280, lastY: 420 },
+  pointer: { down: false, x: 280, y: 360, startX: 280, startY: 360, lastX: 280, lastY: 360 },
   thrownFood: null,
   bubbles: [],
   particles: [],
@@ -1068,16 +1032,6 @@ function loadGame() {
   } catch (err) {}
 }
 loadGame();
-
-function updateWatchClock() {
-  const now = new Date();
-  const hh = String(now.getHours()).padStart(2, '0');
-  const mm = String(now.getMinutes()).padStart(2, '0');
-  const el = document.getElementById('watchClock');
-  if (el) el.textContent = `${hh}:${mm}`;
-}
-setInterval(updateWatchClock, 10000);
-updateWatchClock();
 
 // ============================================================================
 // 2. 渲染引擎 (100% 保留原始百變怪流體輪廓與五官)
@@ -1782,7 +1736,7 @@ watchCanvas.addEventListener('pointerdown', (e) => {
   state.pointer.lastY = pos.y;
 
   if (state.mode === 'home') {
-    const dist = Math.hypot(pos.x - 280, pos.y - 268);
+    const dist = Math.hypot(pos.x - 280, pos.y - 235);
     if (dist < 145) {
       state.happy = Math.min(100, state.happy + 5);
       state.faceVariantIdx = (state.faceVariantIdx + 1) % IDLE_FACES.length;
@@ -1805,7 +1759,7 @@ window.addEventListener('pointermove', (e) => {
   state.pointer.y = pos.y;
 
   if (state.mode === 'bath' && state.rinseTimer <= 0) {
-    const distToPet = Math.hypot(pos.x - 280, pos.y - 265);
+    const distToPet = Math.hypot(pos.x - 280, pos.y - 235);
     if (distToPet < 145 && moveDist > 6 && state.bubbles.length < 26) {
       state.bubbles.push({
         x: pos.x + (Math.random() - 0.5) * 28,
@@ -1834,14 +1788,14 @@ window.addEventListener('pointerup', () => {
 
   if (state.mode === 'feed' && !state.thrownFood) {
     const dy = state.pointer.y - state.pointer.startY;
-    if (dy < -15 || state.pointer.y < 350) {
+    if (dy < -15 || state.pointer.y < 310) {
       const stageFoods = getUnlockedFoods();
       const chosenFood = stageFoods[state.selectedFood] || stageFoods[0];
       state.thrownFood = {
         x: state.pointer.x,
         y: state.pointer.y,
         targetX: 280,
-        targetY: 250,
+        targetY: 220,
         progress: 0,
         foodItem: chosenFood
       };
@@ -1849,13 +1803,13 @@ window.addEventListener('pointerup', () => {
   }
 
   if (state.mode === 'heal' && state.isSick) {
-    const dist = Math.hypot(state.pointer.x - 280, state.pointer.y - 265);
+    const dist = Math.hypot(state.pointer.x - 280, state.pointer.y - 235);
     if (dist < 140) {
       state.isSick = false;
       state.health = 100;
       state.happyJumpTimer = 55;
       state.squishVelocity = 0.25;
-      spawnParticles(280, 210, '✨', 8);
+      spawnParticles(280, 185, '✨', 8);
       updatePhoneUI();
     }
   }
@@ -1886,7 +1840,7 @@ function gainExp(amount) {
 }
 
 // ============================================================================
-// 4. 主渲染迴圈
+// 4. 主渲染迴圈 (畫布改為 560x440 緊湊黃金比例，不變形不壓縮)
 // ============================================================================
 function renderLoop() {
   state.animTime += 0.035;
@@ -1916,16 +1870,16 @@ function renderLoop() {
     const night = wCtx.createLinearGradient(0, 0, 0, watchCanvas.height);
     night.addColorStop(0, '#252B58'); night.addColorStop(1, '#66527F');
     wCtx.fillStyle = night; wCtx.fillRect(0, 0, watchCanvas.width, watchCanvas.height);
-    for (let i = 0; i < 32; i++) {
+    for (let i = 0; i < 28; i++) {
       const sx = (i * 83 + 29) % watchCanvas.width;
-      const sy = (i * 47 + 18) % 300;
+      const sy = (i * 43 + 18) % 260;
       const twinkle = 0.45 + (Math.sin(state.animTime * 2 + i) + 1) * 0.25;
       wCtx.globalAlpha = twinkle; wCtx.fillStyle = '#FFF7C7';
       wCtx.beginPath(); wCtx.arc(sx, sy, i % 4 === 0 ? 3 : 1.8, 0, Math.PI * 2); wCtx.fill();
     }
     wCtx.globalAlpha = 1;
-    wCtx.fillStyle = '#FFF1B8'; wCtx.beginPath(); wCtx.arc(465, 85, 28, 0, Math.PI * 2); wCtx.fill();
-    wCtx.fillStyle = '#252B58'; wCtx.beginPath(); wCtx.arc(478, 75, 26, 0, Math.PI * 2); wCtx.fill();
+    wCtx.fillStyle = '#FFF1B8'; wCtx.beginPath(); wCtx.arc(475, 72, 24, 0, Math.PI * 2); wCtx.fill();
+    wCtx.fillStyle = '#252B58'; wCtx.beginPath(); wCtx.arc(486, 64, 22, 0, Math.PI * 2); wCtx.fill();
   } else {
     wCtx.fillStyle = '#FFF9FC'; wCtx.fillRect(0, 0, watchCanvas.width, watchCanvas.height);
     wCtx.strokeStyle = 'rgba(218, 195, 232, 0.28)'; wCtx.lineWidth = 2;
@@ -1938,7 +1892,7 @@ function renderLoop() {
   }
 
   wCtx.fillStyle = isNightBg ? 'rgba(20, 19, 49, .35)' : '#F2E3F9';
-  wCtx.beginPath(); wCtx.ellipse(280, 378, 140, 30, 0, 0, Math.PI * 2); wCtx.fill();
+  wCtx.beginPath(); wCtx.ellipse(280, 336, 136, 26, 0, 0, Math.PI * 2); wCtx.fill();
 
   const charObj = CHARACTERS[state.charIndex];
 
@@ -1953,7 +1907,7 @@ function renderLoop() {
     expression = 'chewing';
     state.chewTimer--;
     if (state.chewTimer % 6 === 0) {
-      spawnParticles(280 + (Math.random() - 0.5) * 40, 255, '✨', 1);
+      spawnParticles(280 + (Math.random() - 0.5) * 40, 225, '✨', 1);
     }
   } else if (state.mode === 'feed' && (state.pointer.down || state.thrownFood)) {
     expression = 'expecting';
@@ -1974,7 +1928,7 @@ function renderLoop() {
 
   if (state.mode !== 'game') {
     const growthScale = LEVEL_CONFIG[state.level].scale;
-    const petY = 272 + jumpOffset;
+    const petY = 236 + jumpOffset;
 
     drawDittoCharacter(
       wCtx, 280, petY, growthScale,
@@ -1992,9 +1946,9 @@ function renderLoop() {
     if (state.activity === 'sleeping') {
       wCtx.textAlign = 'center';
       wCtx.fillStyle = '#FFF7D6';
-      wCtx.font = '900 22px sans-serif';
+      wCtx.font = '900 21px sans-serif';
       const zOffset = Math.sin(state.animTime * 2) * 5;
-      wCtx.fillText('Z z Z', 395, 210 + zOffset);
+      wCtx.fillText('Z z Z', 395, 175 + zOffset);
     }
 
     wCtx.save();
@@ -2002,13 +1956,13 @@ function renderLoop() {
     wCtx.strokeStyle = '#4A355B';
     wCtx.lineWidth = 3;
     wCtx.beginPath();
-    wCtx.roundRect(65, 84, 430, 42, 20);
+    wCtx.roundRect(65, 58, 430, 38, 18);
     wCtx.fill();
     wCtx.stroke();
     wCtx.fillStyle = '#4A355B';
-    wCtx.font = '900 17.5px Nunito, Noto Sans TC, sans-serif';
+    wCtx.font = '900 17px Nunito, Noto Sans TC, sans-serif';
     wCtx.textAlign = 'center';
-    wCtx.fillText(actInfo.bubble, 280, 111);
+    wCtx.fillText(actInfo.bubble, 280, 83);
     wCtx.restore();
   }
 
@@ -2020,8 +1974,8 @@ function renderLoop() {
       state.thrownFood.progress += 0.08;
       const t = state.thrownFood.progress;
       const curX = state.thrownFood.x + (state.thrownFood.targetX - state.thrownFood.x) * t;
-      const curY = state.thrownFood.y + (state.thrownFood.targetY - state.thrownFood.y) * t - Math.sin(t * Math.PI) * 110;
-      drawHandDrawnFood(wCtx, curX, curY, state.thrownFood.foodItem.id, 1.35);
+      const curY = state.thrownFood.y + (state.thrownFood.targetY - state.thrownFood.y) * t - Math.sin(t * Math.PI) * 100;
+      drawHandDrawnFood(wCtx, curX, curY, state.thrownFood.foodItem.id, 1.3);
 
       if (t >= 1) {
         const foodItem = state.thrownFood.foodItem;
@@ -2030,13 +1984,13 @@ function renderLoop() {
         gainExp(25);
         state.chewTimer = 55;
         state.squishVelocity = 0.24;
-        spawnParticles(280, 220, '🩷', 6);
+        spawnParticles(280, 190, '🩷', 6);
         state.thrownFood = null;
         updatePhoneUI();
       }
     } else {
       const foodX = state.pointer.down ? state.pointer.x : 280;
-      const foodY = state.pointer.down ? state.pointer.y : 410;
+      const foodY = state.pointer.down ? state.pointer.y : 348;
 
       if (!state.pointer.down) {
         wCtx.save();
@@ -2044,12 +1998,12 @@ function renderLoop() {
         wCtx.strokeStyle = '#9E7BBF';
         wCtx.lineWidth = 3.5;
         wCtx.beginPath();
-        wCtx.moveTo(280, 380);
-        wCtx.lineTo(280, 285);
+        wCtx.moveTo(280, 320);
+        wCtx.lineTo(280, 245);
         wCtx.stroke();
         wCtx.restore();
       }
-      drawHandDrawnFood(wCtx, foodX, foodY, currentFood.id, state.pointer.down ? 1.5 : 1.3);
+      drawHandDrawnFood(wCtx, foodX, foodY, currentFood.id, state.pointer.down ? 1.45 : 1.25);
     }
   } else if (state.mode === 'bath') {
     for (let b of state.bubbles) {
@@ -2074,7 +2028,7 @@ function renderLoop() {
       wCtx.lineWidth = 5;
       for (let i = 0; i < 12; i++) {
         const rx = 160 + i * 22 + Math.sin(state.animTime * 20 + i) * 8;
-        const ry = ((state.animTime * 400 + i * 50) % 320) + 75;
+        const ry = ((state.animTime * 400 + i * 50) % 280) + 55;
         wCtx.beginPath();
         wCtx.moveTo(rx, ry);
         wCtx.lineTo(rx, ry + 26);
@@ -2083,18 +2037,18 @@ function renderLoop() {
       if (state.rinseTimer === 1) {
         state.bubbles = [];
         state.happyJumpTimer = 50;
-        spawnParticles(280, 215, '✨', 8);
+        spawnParticles(280, 190, '✨', 8);
       }
     }
 
     const pct = Math.min(100, Math.round((state.bubbles.length / 26) * 100));
     wCtx.fillStyle = '#4A355B';
-    wCtx.font = '900 21px Nunito, Noto Sans TC';
+    wCtx.font = '900 20px Nunito, Noto Sans TC';
     wCtx.textAlign = 'center';
-    wCtx.fillText(state.rinseTimer > 0 ? '🚿 沖水洗香香中！' : `🫧 來回滑動塗抹泡泡：${pct}%`, 280, 470);
+    wCtx.fillText(state.rinseTimer > 0 ? '🚿 沖水洗香香中！' : `🫧 來回滑動塗抹泡泡：${pct}%`, 280, 412);
 
     const spX = state.pointer.down ? state.pointer.x : 410;
-    const spY = state.pointer.down ? state.pointer.y : 370;
+    const spY = state.pointer.down ? state.pointer.y : 320;
     wCtx.save();
     wCtx.fillStyle = '#FFE066';
     wCtx.strokeStyle = '#5D4370';
@@ -2106,17 +2060,17 @@ function renderLoop() {
     wCtx.restore();
   } else if (state.mode === 'heal') {
     wCtx.fillStyle = '#4A355B';
-    wCtx.font = '900 19px Nunito, Noto Sans TC';
+    wCtx.font = '900 18.5px Nunito, Noto Sans TC';
     wCtx.textAlign = 'center';
     wCtx.fillText(
       state.isSick ? '💉 按住並拖曳下方針筒到軟泥身上治療！' : '💚 小軟泥很健康！(可從左上日記測試打針)',
       280,
-      470
+      415
     );
 
     const syrX = state.pointer.down ? state.pointer.x : 280;
-    const syrY = state.pointer.down ? state.pointer.y : 420;
-    wCtx.font = '52px serif';
+    const syrY = state.pointer.down ? state.pointer.y : 368;
+    wCtx.font = '48px serif';
     wCtx.fillText('💉', syrX, syrY);
   } else if (state.mode === 'game') {
     renderRpsMiniGame(wCtx, charObj);
@@ -2127,7 +2081,7 @@ function renderLoop() {
     p.x += p.vx;
     p.y += p.vy;
     p.life--;
-    wCtx.font = '28px serif';
+    wCtx.font = '26px serif';
     wCtx.fillText(p.symbol, p.x, p.y);
     if (p.life <= 0) state.particles.splice(i, 1);
   }
@@ -2139,34 +2093,34 @@ function renderLoop() {
 // 5. 猜拳小遊戲
 // ============================================================================
 function renderRpsMiniGame(ctx, charObj) {
-  drawDittoCharacter(ctx, 280, 195, 0.82, charObj, 'happy', state.animTime, state.equippedHat, false);
+  drawDittoCharacter(ctx, 280, 165, 0.78, charObj, 'happy', state.animTime, state.equippedHat, false);
 
   ctx.fillStyle = '#4A355B';
-  ctx.font = '900 20px Nunito, Noto Sans TC';
+  ctx.font = '900 19px Nunito, Noto Sans TC';
   ctx.textAlign = 'center';
-  ctx.fillText(state.rpsState.resultText, 280, 330);
+  ctx.fillText(state.rpsState.resultText, 280, 290);
 
   if (state.rpsState.playerChoice) {
-    ctx.font = '900 22px Nunito, Noto Sans TC';
-    ctx.fillText(`你出 ${state.rpsState.playerChoice}  VS  軟泥出 ${state.rpsState.petChoice}`, 280, 366);
+    ctx.font = '900 21px Nunito, Noto Sans TC';
+    ctx.fillText(`你出 ${state.rpsState.playerChoice}  VS  軟泥出 ${state.rpsState.petChoice}`, 280, 324);
   }
 
   const btns = [
-    { icon: '✊', label: '石頭', x: 130, y: 435 },
-    { icon: '✌️', label: '剪刀', x: 280, y: 435 },
-    { icon: '🖐️', label: '布', x: 430, y: 435 }
+    { icon: '✊', label: '石頭', x: 130, y: 382 },
+    { icon: '✌️', label: '剪刀', x: 280, y: 382 },
+    { icon: '🖐️', label: '布', x: 430, y: 382 }
   ];
   for (let b of btns) {
     ctx.save();
     ctx.fillStyle = '#F9C6D9';
     ctx.strokeStyle = '#4A355B';
-    ctx.lineWidth = 4.5;
+    ctx.lineWidth = 4.2;
     ctx.beginPath();
-    ctx.roundRect(b.x - 50, b.y - 34, 100, 68, 22);
+    ctx.roundRect(b.x - 48, b.y - 30, 96, 60, 20);
     ctx.fill();
     ctx.stroke();
     ctx.fillStyle = '#4A355B';
-    ctx.font = '32px serif';
+    ctx.font = '30px serif';
     ctx.fillText(b.icon, b.x, b.y + 10);
     ctx.restore();
   }
@@ -2176,7 +2130,7 @@ function handleRpsClick(x, y) {
   const choices = ['✊', '✌️', '🖐️'];
   const xs = [130, 280, 430];
   for (let i = 0; i < 3; i++) {
-    if (Math.hypot(x - xs[i], y - 435) < 60) {
+    if (Math.hypot(x - xs[i], y - 382) < 58) {
       const p = choices[i];
       const c = choices[Math.floor(Math.random() * 3)];
       state.rpsState.playerChoice = p;
@@ -2192,7 +2146,7 @@ function handleRpsClick(x, y) {
         state.rpsState.resultText = '🎉 你贏了！獲得 +30G 金幣與快樂！';
         state.coins += 30;
         state.happy = Math.min(100, state.happy + 15);
-        spawnParticles(280, 195, '🎵', 6);
+        spawnParticles(280, 170, '🎵', 6);
         updatePhoneUI();
       } else {
         state.rpsState.resultText = `😆 ${CHARACTERS[state.charIndex].shortName} 贏囉！(+10G)`;
@@ -2232,7 +2186,7 @@ function setPetLevel(newLv) {
 
   state.squishVelocity = 0.24;
   state.happyJumpTimer = 40;
-  spawnParticles(280, 200, '✨', 7);
+  spawnParticles(280, 180, '✨', 7);
 
   const count = LEVEL_CONFIG[lv].count;
   const toast = document.getElementById('syncToast');
@@ -2298,20 +2252,20 @@ function setDailyActivity(actId, isInitialOpen = false) {
   if (!isInitialOpen) {
     if (actId === 'reading') {
       state.happy = Math.min(100, state.happy + 5);
-      spawnParticles(280, 195, '📖', 5);
+      spawnParticles(280, 175, '📖', 5);
     } else if (actId === 'exercising') {
       state.health = Math.min(100, state.health + 5);
-      spawnParticles(280, 195, '💪', 5);
+      spawnParticles(280, 175, '💪', 5);
     } else if (actId === 'tea') {
       state.hunger = Math.min(100, state.hunger + 5);
-      spawnParticles(280, 195, '🍵', 5);
+      spawnParticles(280, 175, '🍵', 5);
     } else if (actId === 'painting') {
       state.happy = Math.min(100, state.happy + 6);
-      spawnParticles(280, 195, '🎨', 5);
+      spawnParticles(280, 175, '🎨', 5);
     } else if (actId === 'sleeping') {
-      spawnParticles(280, 195, '🌙', 5);
+      spawnParticles(280, 175, '🌙', 5);
     } else {
-      spawnParticles(280, 195, '🫧', 4);
+      spawnParticles(280, 175, '🫧', 4);
     }
   }
 
@@ -2362,7 +2316,7 @@ function finishWizard() {
   state.petName = val || CHARACTERS[state.charIndex].shortName;
   document.getElementById('wizardOverlay').classList.add('hidden');
   state.squishVelocity = 0.25;
-  spawnParticles(280, 230, '🎉', 8);
+  spawnParticles(280, 200, '🎉', 8);
   updatePhoneUI();
 }
 
@@ -2380,7 +2334,7 @@ function quickSwitchChar(idx) {
   document.getElementById('wizardOverlay').classList.add('hidden');
   toggleDiaryDrawer(false);
   state.squishVelocity = 0.25;
-  spawnParticles(280, 230, '✨', 6);
+  spawnParticles(280, 200, '✨', 6);
   updatePhoneUI();
 }
 
@@ -2390,7 +2344,7 @@ function triggerExpressionDemo() {
   switchMode('home');
   state.faceVariantIdx = (state.faceVariantIdx + 1) % IDLE_FACES.length;
   state.squishVelocity = 0.26;
-  spawnParticles(280, 215, '🩷', 4);
+  spawnParticles(280, 195, '🩷', 4);
 }
 
 function switchMode(newMode) {
@@ -2407,17 +2361,6 @@ function switchMode(newMode) {
 
   const actBar = document.getElementById('activityPickerBar');
   if (actBar) actBar.classList.toggle('hidden', newMode !== 'home');
-
-  const actInfo = DAILY_ACTIVITIES[state.activity] || DAILY_ACTIVITIES.none;
-  const hints = {
-    home: actInfo.hint,
-    feed: '🍡 上滑拋投食物',
-    bath: '🧽 來回滑動抹泡泡',
-    heal: '💉 拖曳針筒治療',
-    game: '🎵 點擊出拳猜拳'
-  };
-  const hintEl = document.getElementById('hudModeHint');
-  if (hintEl) hintEl.textContent = hints[newMode];
 }
 
 function selectFood(idx) {
@@ -2527,7 +2470,7 @@ function buyHat(id) {
   state.equippedHat = hat.id;
   document.getElementById('wizardOverlay').classList.add('hidden');
   state.squishVelocity = 0.22;
-  spawnParticles(280, 180, '🎀', 6);
+  spawnParticles(280, 165, '🎀', 6);
   const toast = document.getElementById('syncToast');
   if (toast) toast.textContent = `🎉 已購買並穿戴「${hat.name}」！`;
   updatePhoneUI();
@@ -2540,7 +2483,7 @@ function equipHat(id) {
   state.equippedHat = id;
   document.getElementById('wizardOverlay').classList.add('hidden');
   state.squishVelocity = 0.2;
-  spawnParticles(280, 180, '✨', 5);
+  spawnParticles(280, 165, '✨', 5);
   const toast = document.getElementById('syncToast');
   if (toast) toast.textContent = `✨ 已換上「${hat.name}」！`;
   updatePhoneUI();
@@ -2571,7 +2514,7 @@ function growthTick() {
       state.exp = 0;
       state.coins = Math.min(1000000, state.coins + 50);
       state.happy = Math.min(100, state.happy + 10);
-      spawnParticles(280, 195, '🌟', 10);
+      spawnParticles(280, 175, '🌟', 10);
     }
   }
   updatePhoneUI();
@@ -2582,13 +2525,11 @@ setInterval(growthTick, 60000);
 function updatePhoneUI() {
   const cfg = LEVEL_CONFIG[state.level];
 
-  const tEl = document.getElementById('watchTitleText');
-  if (tEl) tEl.textContent = state.petName;
   const topCoin = document.getElementById('topCoinBadge');
   if (topCoin) topCoin.textContent = `${state.coins}G`;
 
   const lEl = document.getElementById('hudLevelPill');
-  if (lEl) lEl.textContent = `${cfg.shortTitle} · 飽食 ${state.hunger}%`;
+  if (lEl) lEl.textContent = `${state.petName} · ${cfg.shortTitle} · 飽食${state.hunger}%`;
   const levelBadge = document.getElementById('phoneLevelBadge');
   if (levelBadge) levelBadge.textContent = `🪙 ${state.coins} G`;
 
@@ -2628,10 +2569,6 @@ function updatePhoneUI() {
   const actInfo = DAILY_ACTIVITIES[state.activity] || DAILY_ACTIVITIES.none;
   const badgeEl = document.getElementById('currentActivityBadge');
   if (badgeEl) badgeEl.textContent = actInfo.label;
-  if (state.mode === 'home') {
-    const hintEl = document.getElementById('hudModeHint');
-    if (hintEl) hintEl.textContent = actInfo.hint;
-  }
 
   const noneBtn = document.getElementById('phoneAct-none');
   if (noneBtn) noneBtn.classList.toggle('active-act', state.activity === 'none');
@@ -2641,7 +2578,6 @@ function updatePhoneUI() {
   saveGame();
 }
 
-// 支援 Apple Watch 數碼錶冠滾輪切換分頁
 const modeOrder = ['home', 'feed', 'bath', 'heal', 'game'];
 window.addEventListener('wheel', (e) => {
   if (!document.getElementById('diaryDrawer').classList.contains('hidden')) return;
@@ -2652,7 +2588,6 @@ window.addEventListener('wheel', (e) => {
   switchMode(modeOrder[nextIdx]);
 }, { passive: true });
 
-// 安全事件派發
 const secureClickHandlers = {
   "open_diary": () => (toggleDiaryDrawer(true)),
   "close_diary": () => (toggleDiaryDrawer(false)),
@@ -2700,7 +2635,6 @@ document.addEventListener("click", (event) => {
   }
 });
 
-// 初始化啟動
 randomizeAppOpenActivity(true);
 requestAnimationFrame(renderLoop);
 </script>
