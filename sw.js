@@ -1,5 +1,5 @@
 // 百變軟泥離線快取版本號（日後若有修改程式碼，只要把 v1 改成 v2 就會自動更新快取）
-const CACHE_NAME = 'squishy-ditto-pwa-v1';
+const CACHE_NAME = 'squishy-ditto-pwa-v2';
 
 // 需要永久快取在手錶/手機裡的檔案清單
 const ASSETS_TO_CACHE = [
